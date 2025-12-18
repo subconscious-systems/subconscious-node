@@ -11,9 +11,12 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/subconscious"><img src="https://img.shields.io/npm/v/subconscious.svg" alt="npm version"></a>
   <a href="https://www.npmjs.com/package/subconscious"><img src="https://img.shields.io/npm/dm/subconscious.svg" alt="npm downloads"></a>
+  <a href="https://docs.subconscious.dev"><img src="https://img.shields.io/badge/docs-subconscious.dev-blue" alt="docs"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="node version">
   <a href="https://github.com/subconscious-systems/subconscious-node"><img src="https://img.shields.io/npm/l/subconscious.svg" alt="license"></a>
 </p>
+
+---
 
 ## Installation
 
@@ -25,12 +28,10 @@ npm install subconscious
 yarn add subconscious
 ```
 
-
 ## Requirements
 
 - Node.js ≥ 18
 - ESM only
-
 
 ## Quick Start
 
@@ -53,6 +54,10 @@ const run = await client.run({
 
 console.log(run.result?.answer);
 ```
+
+## Get Your API Key
+
+Create an API key in the [Subconscious dashboard](https://www.subconscious.dev/dashboard).
 
 ## Examples
 
