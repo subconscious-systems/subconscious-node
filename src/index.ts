@@ -1,5 +1,5 @@
 // Main client
-export { Subconscious, type SubconsciousOptions } from "./client.js";
+export { Subconscious, type SubconsciousOptions } from './client.js';
 
 // Types - Run
 export type {
@@ -14,10 +14,10 @@ export type {
   Usage,
   ModelUsage,
   PlatformToolUsage,
-} from "./types/run.js";
+} from './types/run.js';
 
 // Types - Tools
-export type { Tool, PlatformTool, FunctionTool, MCPTool } from "./types/tool.js";
+export type { Tool, PlatformTool, FunctionTool, MCPTool } from './types/tool.js';
 
 // Types - Events
 export type {
@@ -29,7 +29,7 @@ export type {
   ReasoningEvent,
   ToolCallEvent,
   ToolResultEvent,
-} from "./types/events.js";
+} from './types/events.js';
 
 // Types - Errors
 export {
@@ -40,8 +40,7 @@ export {
   ValidationError,
   type ErrorCode,
   type APIErrorResponse,
-} from "./types/error.js";
+} from './types/error.js';
 
 // Stream types
-export type { RunStream, StreamOptions } from "./stream.js";
-
+export type { RunStream, StreamOptions } from './stream.js';

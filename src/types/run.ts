@@ -1,16 +1,6 @@
-export type Engine =
-  | "tim-small-preview"
-  | "tim-large"
-  | "timini"
-  | (string & {});
+export type Engine = 'tim-small-preview' | 'tim-large' | 'timini' | (string & {});
 
-export type RunStatus =
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceled"
-  | "timed_out";
+export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'timed_out';
 
 export type ReasoningNode = {
   title: string;
@@ -51,7 +41,7 @@ export type PlatformToolUsage = {
 
 export type RunInput = {
   instructions: string;
-  tools: import("./tool.js").Tool[];
+  tools: import('./tool.js').Tool[];
 };
 
 export type RunOptions = {
@@ -63,4 +53,3 @@ export type RunParams = {
   input: RunInput;
   options?: RunOptions;
 };
-

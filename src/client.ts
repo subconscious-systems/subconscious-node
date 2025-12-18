@@ -1,7 +1,7 @@
-import { request } from "./internal/http.js";
-import { pollUntilComplete, type PollOptions } from "./internal/poll.js";
-import { createStream, type StreamOptions, type RunStream } from "./stream.js";
-import type { Run, Engine, RunInput, RunOptions, RunParams } from "./types/run.js";
+import { request } from './internal/http.js';
+import { pollUntilComplete, type PollOptions } from './internal/poll.js';
+import { createStream, type StreamOptions, type RunStream } from './stream.js';
+import type { Run, Engine, RunInput, RunOptions, RunParams } from './types/run.js';
 
 export type SubconsciousOptions = {
   apiKey: string;
@@ -35,9 +35,9 @@ export class Subconscious {
 
   constructor(opts: SubconsciousOptions) {
     if (!opts.apiKey) {
-      throw new Error("apiKey is required");
+      throw new Error('apiKey is required');
     }
-    this.baseUrl = opts.baseUrl ?? "https://api.subconscious.dev/v1";
+    this.baseUrl = opts.baseUrl ?? 'https://api.subconscious.dev/v1';
     this.apiKey = opts.apiKey;
   }
 
@@ -51,7 +51,7 @@ export class Subconscious {
    */
   async run(params: RunParams): Promise<Run> {
     const { runId } = await request<{ runId: string }>(`${this.baseUrl}/runs`, {
-      method: "POST",
+      method: 'POST',
       headers: this.authHeaders(),
       body: JSON.stringify({
         engine: params.engine,
@@ -86,10 +86,7 @@ export class Subconscious {
    * }
    * ```
    */
-  stream(
-    params: { engine: Engine; input: RunInput },
-    options?: StreamOptions,
-  ): RunStream {
+  stream(params: { engine: Engine; input: RunInput }, options?: StreamOptions): RunStream {
     return createStream(this.baseUrl, this.apiKey, params, options);
   }
 
@@ -113,11 +110,7 @@ export class Subconscious {
    * @param options.signal - AbortSignal to cancel polling
    */
   async wait(runId: string, options?: PollOptions): Promise<Run> {
-    return pollUntilComplete(
-      `${this.baseUrl}/runs/${runId}`,
-      this.authHeaders(),
-      options,
-    );
+    return pollUntilComplete(`${this.baseUrl}/runs/${runId}`, this.authHeaders(), options);
   }
 
   /**
@@ -127,7 +120,7 @@ export class Subconscious {
    */
   async cancel(runId: string): Promise<Run> {
     return request<Run>(`${this.baseUrl}/runs/${runId}/cancel`, {
-      method: "POST",
+      method: 'POST',
       headers: this.authHeaders(),
     });
   }
@@ -136,4 +129,3 @@ export class Subconscious {
     return { Authorization: `Bearer ${this.apiKey}` };
   }
 }
-

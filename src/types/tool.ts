@@ -1,11 +1,11 @@
 export type PlatformTool = {
-  type: "platform";
+  type: 'platform';
   id: string;
   options: Record<string, unknown>;
 };
 
 export type FunctionTool = {
-  type: "function";
+  type: 'function';
   function: {
     name: string;
     description?: string;
@@ -14,10 +14,9 @@ export type FunctionTool = {
 };
 
 export type MCPTool = {
-  type: "mcp";
+  type: 'mcp';
   url: string;
   allow?: string[];
 };
 
 export type Tool = PlatformTool | FunctionTool | MCPTool;
-

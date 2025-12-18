@@ -36,7 +36,7 @@ yarn add subconscious
 ## Quick Start
 
 ```typescript
-import { Subconscious } from "subconscious";
+import { Subconscious } from 'subconscious';
 
 const client = new Subconscious({
   apiKey: process.env.SUBCONSCIOUS_API_KEY!,
@@ -44,10 +44,10 @@ const client = new Subconscious({
 
 // Create a run and wait for completion
 const run = await client.run({
-  engine: "tim-large",
+  engine: 'tim-large',
   input: {
-    instructions: "Search for the latest AI news and summarize the top 3 stories",
-    tools: [{ type: "platform", id: "parallel_search", options: {} }],
+    instructions: 'Search for the latest AI news and summarize the top 3 stories',
+    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
   },
   options: { awaitCompletion: true },
 });
@@ -67,9 +67,9 @@ Create a run without waiting for completion:
 
 ```typescript
 const run = await client.run({
-  engine: "tim-small-preview",
+  engine: 'tim-small-preview',
   input: {
-    instructions: "Generate a report",
+    instructions: 'Generate a report',
     tools: [],
   },
 });
@@ -85,17 +85,17 @@ console.log(status.status);
 
 ```typescript
 const run = await client.run({
-  engine: "tim-large",
+  engine: 'tim-large',
   input: {
-    instructions: "Complex task",
-    tools: [{ type: "platform", id: "parallel_search", options: {} }],
+    instructions: 'Complex task',
+    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
   },
 });
 
 // Wait with custom polling options
 const result = await client.wait(run.runId, {
-  intervalMs: 2000,      // Poll every 2 seconds
-  maxAttempts: 60,       // Give up after 60 attempts
+  intervalMs: 2000, // Poll every 2 seconds
+  maxAttempts: 60, // Give up after 60 attempts
 });
 ```
 
@@ -105,28 +105,28 @@ Process events as they arrive:
 
 ```typescript
 const stream = client.stream({
-  engine: "tim-large",
+  engine: 'tim-large',
   input: {
-    instructions: "Search and analyze",
-    tools: [{ type: "platform", id: "parallel_search", options: {} }],
+    instructions: 'Search and analyze',
+    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
   },
 });
 
 for await (const event of stream) {
   switch (event.type) {
-    case "run.started":
+    case 'run.started':
       console.log(`Run started: ${event.runId}`);
       break;
-    case "reasoning":
+    case 'reasoning':
       console.log(`Thinking: ${event.node.title}`);
       break;
-    case "tool.call":
+    case 'tool.call':
       console.log(`Calling tool: ${event.toolId}`);
       break;
-    case "run.completed":
+    case 'run.completed':
       console.log(`Answer: ${event.result.answer}`);
       break;
-    case "run.failed":
+    case 'run.failed':
       console.error(`Failed: ${event.error.message}`);
       break;
   }
@@ -140,40 +140,40 @@ Tools are plain JSON objects with a `type` discriminator:
 ```typescript
 // Platform tools
 const parallelSearch = {
-  type: "platform",
-  id: "parallel_search",
+  type: 'platform',
+  id: 'parallel_search',
   options: {},
 };
 
 // Function tools
 const customSearch = {
-  type: "function",
+  type: 'function',
   function: {
-    name: "search_database",
-    description: "Search the internal database",
+    name: 'search_database',
+    description: 'Search the internal database',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        query: { type: "string" },
-        limit: { type: "number" },
+        query: { type: 'string' },
+        limit: { type: 'number' },
       },
-      required: ["query"],
+      required: ['query'],
     },
   },
 };
 
 // MCP tools
 const mcpTool = {
-  type: "mcp",
-  url: "https://mcp.example.com",
-  allow: ["read", "write"],
+  type: 'mcp',
+  url: 'https://mcp.example.com',
+  allow: ['read', 'write'],
 };
 
 // Use in a run
 await client.run({
-  engine: "tim-large",
+  engine: 'tim-large',
   input: {
-    instructions: "...",
+    instructions: '...',
     tools: [parallelSearch, customSearch, mcpTool],
   },
 });
@@ -182,20 +182,17 @@ await client.run({
 ### Error Handling
 
 ```typescript
-import {
-  Subconscious,
-  SubconsciousError,
-  AuthenticationError,
-  RateLimitError,
-} from "subconscious";
+import { Subconscious, SubconsciousError, AuthenticationError, RateLimitError } from 'subconscious';
 
 try {
-  const run = await client.run({ /* ... */ });
+  const run = await client.run({
+    /* ... */
+  });
 } catch (error) {
   if (error instanceof AuthenticationError) {
-    console.error("Invalid API key");
+    console.error('Invalid API key');
   } else if (error instanceof RateLimitError) {
-    console.error("Rate limited, retry later");
+    console.error('Rate limited, retry later');
   } else if (error instanceof SubconsciousError) {
     console.error(`API error: ${error.code} - ${error.message}`);
   } else {
@@ -212,8 +209,8 @@ const controller = new AbortController();
 
 const stream = client.stream(
   {
-    engine: "tim-large",
-    input: { instructions: "...", tools: [] },
+    engine: 'tim-large',
+    input: { instructions: '...', tools: [] },
   },
   { signal: controller.signal },
 );
@@ -233,32 +230,32 @@ The main client class.
 
 #### Constructor Options
 
-| Option | Type | Required | Default |
-|--------|------|----------|---------|
-| `apiKey` | `string` | Yes | - |
-| `baseUrl` | `string` | No | `https://api.subconscious.dev/v1` |
+| Option    | Type     | Required | Default                           |
+| --------- | -------- | -------- | --------------------------------- |
+| `apiKey`  | `string` | Yes      | -                                 |
+| `baseUrl` | `string` | No       | `https://api.subconscious.dev/v1` |
 
 #### Methods
 
-| Method | Description |
-|--------|-------------|
-| `run(params)` | Create a new run |
-| `stream(params, options?)` | Create a streaming run |
-| `get(runId)` | Get run status |
-| `wait(runId, options?)` | Poll until run completes |
-| `cancel(runId)` | Cancel a running run |
+| Method                     | Description              |
+| -------------------------- | ------------------------ |
+| `run(params)`              | Create a new run         |
+| `stream(params, options?)` | Create a streaming run   |
+| `get(runId)`               | Get run status           |
+| `wait(runId, options?)`    | Poll until run completes |
+| `cancel(runId)`            | Cancel a running run     |
 
 ### Tool Types
 
 ```typescript
 type PlatformTool = {
-  type: "platform";
+  type: 'platform';
   id: string;
   options: Record<string, unknown>;
 };
 
 type FunctionTool = {
-  type: "function";
+  type: 'function';
   function: {
     name: string;
     description?: string;
@@ -267,7 +264,7 @@ type FunctionTool = {
 };
 
 type MCPTool = {
-  type: "mcp";
+  type: 'mcp';
   url: string;
   allow?: string[];
 };
@@ -277,22 +274,22 @@ type Tool = PlatformTool | FunctionTool | MCPTool;
 
 ### Engines
 
-| Engine | Type | Availability | Description |
-|--------|------|--------------|-------------|
-| `tim-small-preview` | Unified | Available | Fast and tuned for search tasks |
-| `tim-large` | Compound | Available | Generalized reasoning engine backed by the power of OpenAI |
-| `timini` | Compound | Coming soon | Generalized reasoning engine backed by the power of Google Gemini |
+| Engine              | Type     | Availability | Description                                                       |
+| ------------------- | -------- | ------------ | ----------------------------------------------------------------- |
+| `tim-small-preview` | Unified  | Available    | Fast and tuned for search tasks                                   |
+| `tim-large`         | Compound | Available    | Generalized reasoning engine backed by the power of OpenAI        |
+| `timini`            | Compound | Coming soon  | Generalized reasoning engine backed by the power of Google Gemini |
 
 ### Run Status
 
-| Status | Description |
-|--------|-------------|
-| `queued` | Waiting to start |
-| `running` | Currently executing |
+| Status      | Description            |
+| ----------- | ---------------------- |
+| `queued`    | Waiting to start       |
+| `running`   | Currently executing    |
 | `succeeded` | Completed successfully |
-| `failed` | Encountered an error |
-| `canceled` | Manually canceled |
-| `timed_out` | Exceeded time limit |
+| `failed`    | Encountered an error   |
+| `canceled`  | Manually canceled      |
+| `timed_out` | Exceeded time limit    |
 
 ## Contributing
 

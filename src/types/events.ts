@@ -1,25 +1,25 @@
-import type { RunStatus, RunResult, Usage } from "./run.js";
+import type { RunStatus, RunResult, Usage } from './run.js';
 
 export type RunStartedEvent = {
-  type: "run.started";
+  type: 'run.started';
   runId: string;
 };
 
 export type RunStatusEvent = {
-  type: "run.status";
+  type: 'run.status';
   runId: string;
   status: RunStatus;
 };
 
 export type RunCompletedEvent = {
-  type: "run.completed";
+  type: 'run.completed';
   runId: string;
   result: RunResult;
   usage: Usage;
 };
 
 export type RunFailedEvent = {
-  type: "run.failed";
+  type: 'run.failed';
   runId: string;
   error: {
     code: string;
@@ -28,7 +28,7 @@ export type RunFailedEvent = {
 };
 
 export type ReasoningEvent = {
-  type: "reasoning";
+  type: 'reasoning';
   runId: string;
   node: {
     title: string;
@@ -37,14 +37,14 @@ export type ReasoningEvent = {
 };
 
 export type ToolCallEvent = {
-  type: "tool.call";
+  type: 'tool.call';
   runId: string;
   toolId: string;
   input: unknown;
 };
 
 export type ToolResultEvent = {
-  type: "tool.result";
+  type: 'tool.result';
   runId: string;
   toolId: string;
   output: unknown;
@@ -58,4 +58,3 @@ export type StreamEvent =
   | ReasoningEvent
   | ToolCallEvent
   | ToolResultEvent;
-

@@ -1,12 +1,7 @@
-import { request } from "./http.js";
-import type { Run, RunStatus } from "../types/run.js";
+import { request } from './http.js';
+import type { Run, RunStatus } from '../types/run.js';
 
-const TERMINAL_STATUSES: RunStatus[] = [
-  "succeeded",
-  "failed",
-  "canceled",
-  "timed_out",
-];
+const TERMINAL_STATUSES: RunStatus[] = ['succeeded', 'failed', 'canceled', 'timed_out'];
 
 export type PollOptions = {
   intervalMs?: number;
@@ -25,7 +20,7 @@ export async function pollUntilComplete(
 
   while (true) {
     if (signal?.aborted) {
-      throw new Error("Polling aborted");
+      throw new Error('Polling aborted');
     }
 
     const run = await request<Run>(url, { headers, signal });
@@ -49,14 +44,13 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 
     if (signal) {
       signal.addEventListener(
-        "abort",
+        'abort',
         () => {
           clearTimeout(timeoutId);
-          reject(new Error("Sleep aborted"));
+          reject(new Error('Sleep aborted'));
         },
         { once: true },
       );
     }
   });
 }
-

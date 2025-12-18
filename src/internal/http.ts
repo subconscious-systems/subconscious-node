@@ -6,7 +6,7 @@ import {
   ValidationError,
   type APIErrorResponse,
   type ErrorCode,
-} from "../types/error.js";
+} from '../types/error.js';
 
 export type RequestOptions = RequestInit & {
   signal?: AbortSignal;
@@ -18,13 +18,13 @@ async function parseErrorResponse(res: Response): Promise<SubconsciousError> {
     const { code, message, details } = body.error;
 
     switch (code) {
-      case "authentication_failed":
+      case 'authentication_failed':
         return new AuthenticationError(message);
-      case "rate_limited":
+      case 'rate_limited':
         return new RateLimitError(message);
-      case "not_found":
+      case 'not_found':
         return new NotFoundError(message);
-      case "invalid_request":
+      case 'invalid_request':
         return new ValidationError(message, details);
       default:
         return new SubconsciousError(code, message, res.status, details);
@@ -41,32 +41,29 @@ async function parseErrorResponse(res: Response): Promise<SubconsciousError> {
 function mapStatusToCode(status: number): ErrorCode {
   switch (status) {
     case 400:
-      return "invalid_request";
+      return 'invalid_request';
     case 401:
-      return "authentication_failed";
+      return 'authentication_failed';
     case 403:
-      return "permission_denied";
+      return 'permission_denied';
     case 404:
-      return "not_found";
+      return 'not_found';
     case 429:
-      return "rate_limited";
+      return 'rate_limited';
     case 503:
-      return "service_unavailable";
+      return 'service_unavailable';
     case 504:
-      return "timeout";
+      return 'timeout';
     default:
-      return "internal_error";
+      return 'internal_error';
   }
 }
 
-export async function request<T>(
-  url: string,
-  opts: RequestOptions = {},
-): Promise<T> {
+export async function request<T>(url: string, opts: RequestOptions = {}): Promise<T> {
   const res = await fetch(url, {
     ...opts,
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...opts.headers,
     },
   });
@@ -78,14 +75,11 @@ export async function request<T>(
   return res.json() as Promise<T>;
 }
 
-export async function requestStream(
-  url: string,
-  opts: RequestOptions = {},
-): Promise<Response> {
+export async function requestStream(url: string, opts: RequestOptions = {}): Promise<Response> {
   const res = await fetch(url, {
     ...opts,
     headers: {
-      Accept: "text/event-stream",
+      Accept: 'text/event-stream',
       ...opts.headers,
     },
   });
@@ -96,4 +90,3 @@ export async function requestStream(
 
   return res;
 }
-

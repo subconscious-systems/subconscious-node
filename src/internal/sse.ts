@@ -1,4 +1,4 @@
-import type { StreamEvent } from "../types/events.js";
+import type { StreamEvent } from '../types/events.js';
 
 export type SSEMessage = {
   event?: string;
@@ -8,30 +8,30 @@ export type SSEMessage = {
 };
 
 export function parseSSELine(line: string): Partial<SSEMessage> | null {
-  if (line === "" || line.startsWith(":")) {
+  if (line === '' || line.startsWith(':')) {
     return null;
   }
 
-  const colonIndex = line.indexOf(":");
+  const colonIndex = line.indexOf(':');
   if (colonIndex === -1) {
-    return { [line]: "" } as Partial<SSEMessage>;
+    return { [line]: '' } as Partial<SSEMessage>;
   }
 
   const field = line.slice(0, colonIndex);
   let value = line.slice(colonIndex + 1);
 
-  if (value.startsWith(" ")) {
+  if (value.startsWith(' ')) {
     value = value.slice(1);
   }
 
   switch (field) {
-    case "event":
+    case 'event':
       return { event: value };
-    case "data":
+    case 'data':
       return { data: value };
-    case "id":
+    case 'id':
       return { id: value };
-    case "retry":
+    case 'retry':
       return { retry: parseInt(value, 10) };
     default:
       return null;
@@ -42,7 +42,7 @@ export async function* parseSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
 ): AsyncGenerator<StreamEvent> {
   const decoder = new TextDecoder();
-  let buffer = "";
+  let buffer = '';
   let currentMessage: Partial<SSEMessage> = {};
 
   while (true) {
@@ -50,11 +50,11 @@ export async function* parseSSEStream(
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
 
     for (const line of lines) {
-      if (line === "") {
+      if (line === '') {
         if (currentMessage.data !== undefined) {
           try {
             const event = JSON.parse(currentMessage.data) as StreamEvent;
@@ -75,7 +75,7 @@ export async function* parseSSEStream(
   }
 
   // Handle any remaining data in buffer
-  if (buffer !== "") {
+  if (buffer !== '') {
     const parsed = parseSSELine(buffer);
     if (parsed) {
       Object.assign(currentMessage, parsed);
@@ -90,4 +90,3 @@ export async function* parseSSEStream(
     }
   }
 }
-
