@@ -1,19 +1,36 @@
-# subconscious
+<p align="center">
+  <img src="https://www.subconscious.dev/logo.svg" alt="Subconscious" width="64" height="64">
+</p>
 
-Official Node.js SDK for the Subconscious API.
+<h1 align="center">Subconscious SDK</h1>
+
+<p align="center">
+  The official Node.js SDK for the <a href="https://subconscious.dev">Subconscious API</a>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/subconscious"><img src="https://img.shields.io/npm/v/subconscious.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/subconscious"><img src="https://img.shields.io/npm/dm/subconscious.svg" alt="npm downloads"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="node version">
+  <a href="https://github.com/subconscious-systems/subconscious-node"><img src="https://img.shields.io/npm/l/subconscious.svg" alt="license"></a>
+</p>
+
+## Installation
+
+```bash
+pnpm add subconscious
+# or
+npm install subconscious
+# or
+yarn add subconscious
+```
+
 
 ## Requirements
 
 - Node.js ≥ 18
 - ESM only
 
-## Installation
-
-```bash
-npm install subconscious
-# or
-pnpm add subconscious
-```
 
 ## Quick Start
 
@@ -271,6 +288,10 @@ type Tool = PlatformTool | FunctionTool | MCPTool;
 | `failed` | Encountered an error |
 | `canceled` | Manually canceled |
 | `timed_out` | Exceeded time limit |
+
+## Contributing
+
+We welcome contributions! Please open an issue or submit a PR on [GitHub](https://github.com/subconscious-systems/subconscious-node).
 
 ## License
 
