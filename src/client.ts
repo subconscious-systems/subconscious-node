@@ -13,7 +13,7 @@ export type SubconsciousOptions = {
  *
  * @example
  * ```ts
- * import { Subconscious, tools } from "@subconscious/sdk";
+ * import { Subconscious } from "subconscious";
  *
  * const client = new Subconscious({ apiKey: process.env.SUBCONSCIOUS_API_KEY });
  *

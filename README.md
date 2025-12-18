@@ -1,4 +1,4 @@
-# @subconscious/sdk
+# subconscious
 
 Official Node.js SDK for the Subconscious API.
 
@@ -10,15 +10,15 @@ Official Node.js SDK for the Subconscious API.
 ## Installation
 
 ```bash
-npm install @subconscious/sdk
+npm install subconscious
 # or
-pnpm add @subconscious/sdk
+pnpm add subconscious
 ```
 
 ## Quick Start
 
 ```typescript
-import { Subconscious } from "@subconscious/sdk";
+import { Subconscious } from "subconscious";
 
 const client = new Subconscious({
   apiKey: process.env.SUBCONSCIOUS_API_KEY!,
@@ -165,7 +165,7 @@ import {
   SubconsciousError,
   AuthenticationError,
   RateLimitError,
-} from "@subconscious/sdk";
+} from "subconscious";
 
 try {
   const run = await client.run({ /* ... */ });
