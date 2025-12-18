@@ -1,0 +1,43 @@
+{
+  "name": "@subconscious/sdk",
+  "version": "0.1.0",
+  "description": "Official Node.js SDK for the Subconscious API",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "test": "vitest",
+    "lint": "eslint src/",
+    "format": "prettier --write src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "subconscious",
+    "subconscious.dev",
+    "ai",
+    "sdk",
+    "api"
+  ],
+  "author": "Jack O'Brien",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@10.12.4",
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}
