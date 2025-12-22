@@ -67,12 +67,12 @@ export class Subconscious {
   }
 
   /**
-   * Create a streaming run that yields events as they arrive.
+   * Create a streaming run that yields text deltas as they arrive.
    *
    * @param params.engine - The engine to use for the run
    * @param params.input - The input configuration including instructions and tools
    * @param options.signal - AbortSignal to cancel the stream
-   * @returns An async generator yielding stream events
+   * @returns An async generator yielding delta, done, or error events
    *
    * @example
    * ```ts
@@ -82,7 +82,9 @@ export class Subconscious {
    * });
    *
    * for await (const event of stream) {
-   *   console.log(event.type, event);
+   *   if (event.type === 'delta') {
+   *     process.stdout.write(event.content);
+   *   }
    * }
    * ```
    */

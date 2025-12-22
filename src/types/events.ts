@@ -1,60 +1,34 @@
-import type { RunStatus, RunResult, Usage } from './run.js';
+/**
+ * Text delta event - emitted as text is generated.
+ */
+export type DeltaEvent = {
+  type: 'delta';
+  runId: string;
+  content: string;
+};
 
-export type RunStartedEvent = {
-  type: 'run.started';
+/**
+ * Stream completed successfully.
+ */
+export type DoneEvent = {
+  type: 'done';
   runId: string;
 };
 
-export type RunStatusEvent = {
-  type: 'run.status';
+/**
+ * Stream encountered an error.
+ */
+export type ErrorEvent = {
+  type: 'error';
   runId: string;
-  status: RunStatus;
+  message: string;
+  code?: string;
 };
 
-export type RunCompletedEvent = {
-  type: 'run.completed';
-  runId: string;
-  result: RunResult;
-  usage: Usage;
-};
-
-export type RunFailedEvent = {
-  type: 'run.failed';
-  runId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-export type ReasoningEvent = {
-  type: 'reasoning';
-  runId: string;
-  node: {
-    title: string;
-    thought: string;
-  };
-};
-
-export type ToolCallEvent = {
-  type: 'tool.call';
-  runId: string;
-  toolId: string;
-  input: unknown;
-};
-
-export type ToolResultEvent = {
-  type: 'tool.result';
-  runId: string;
-  toolId: string;
-  output: unknown;
-};
-
-export type StreamEvent =
-  | RunStartedEvent
-  | RunStatusEvent
-  | RunCompletedEvent
-  | RunFailedEvent
-  | ReasoningEvent
-  | ToolCallEvent
-  | ToolResultEvent;
+/**
+ * All possible stream events.
+ *
+ * Currently supports text deltas. Rich events (reasoning, tool calls)
+ * are coming soon.
+ */
+export type StreamEvent = DeltaEvent | DoneEvent | ErrorEvent;

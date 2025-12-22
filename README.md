@@ -28,11 +28,6 @@ npm install subconscious
 yarn add subconscious
 ```
 
-## Requirements
-
-- Node.js ≥ 18
-- ESM only
-
 ## Quick Start
 
 ```typescript
@@ -42,7 +37,6 @@ const client = new Subconscious({
   apiKey: process.env.SUBCONSCIOUS_API_KEY!,
 });
 
-// Create a run and wait for completion
 const run = await client.run({
   engine: 'tim-large',
   input: {
@@ -57,19 +51,37 @@ console.log(run.result?.answer);
 
 ## Get Your API Key
 
-Create an API key in the [Subconscious dashboard](https://www.subconscious.dev/dashboard).
+Create an API key in the [Subconscious dashboard](https://www.subconscious.dev/platform).
 
-## Examples
+## Usage
 
-### Fire and Forget
+### Run and Wait
 
-Create a run without waiting for completion:
+The simplest way to use the SDK—create a run and wait for completion:
 
 ```typescript
 const run = await client.run({
-  engine: 'tim-small-preview',
+  engine: 'tim-large',
   input: {
-    instructions: 'Generate a report',
+    instructions: 'Analyze the latest trends in renewable energy',
+    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+  },
+  options: { awaitCompletion: true },
+});
+
+console.log(run.result?.answer);
+console.log(run.result?.reasoning); // Structured reasoning nodes
+```
+
+### Fire and Forget
+
+Start a run without waiting, then check status later:
+
+```typescript
+const run = await client.run({
+  engine: 'tim-large',
+  input: {
+    instructions: 'Generate a comprehensive report',
     tools: [],
   },
 });
@@ -78,87 +90,79 @@ console.log(`Run started: ${run.runId}`);
 
 // Check status later
 const status = await client.get(run.runId);
-console.log(status.status);
+console.log(status.status); // 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'timed_out'
 ```
 
-### Polling with Custom Options
+### Poll with Custom Options
 
 ```typescript
 const run = await client.run({
   engine: 'tim-large',
   input: {
     instructions: 'Complex task',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    tools: [{ type: 'platform', id: 'parallel_search' }],
   },
 });
 
 // Wait with custom polling options
 const result = await client.wait(run.runId, {
-  intervalMs: 2000, // Poll every 2 seconds
-  maxAttempts: 60, // Give up after 60 attempts
+  intervalMs: 2000,  // Poll every 2 seconds
+  maxAttempts: 60,   // Give up after 60 attempts
 });
 ```
 
-### Streaming
+### Streaming (Text Deltas)
 
-Process events as they arrive:
+Stream text as it's generated:
 
 ```typescript
 const stream = client.stream({
   engine: 'tim-large',
   input: {
-    instructions: 'Search and analyze',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    instructions: 'Write a short essay about space exploration',
+    tools: [{ type: 'platform', id: 'parallel_search' }],
   },
 });
 
 for await (const event of stream) {
-  switch (event.type) {
-    case 'run.started':
-      console.log(`Run started: ${event.runId}`);
-      break;
-    case 'reasoning':
-      console.log(`Thinking: ${event.node.title}`);
-      break;
-    case 'tool.call':
-      console.log(`Calling tool: ${event.toolId}`);
-      break;
-    case 'run.completed':
-      console.log(`Answer: ${event.result.answer}`);
-      break;
-    case 'run.failed':
-      console.error(`Failed: ${event.error.message}`);
-      break;
+  if (event.type === 'delta') {
+    process.stdout.write(event.content);
+  } else if (event.type === 'done') {
+    console.log('\n\nRun completed:', event.runId);
+  } else if (event.type === 'error') {
+    console.error('Error:', event.message);
   }
 }
 ```
 
-### Tool Configuration
+> **Note**: Rich streaming events (reasoning steps, tool calls) are coming soon. Currently, the stream provides text deltas as they're generated.
 
-Tools are plain JSON objects with a `type` discriminator:
+### Tools
 
 ```typescript
-// Platform tools
+// Platform tools (hosted by Subconscious)
 const parallelSearch = {
   type: 'platform',
   id: 'parallel_search',
   options: {},
 };
 
-// Function tools
-const customSearch = {
+// Function tools (your own functions)
+const customFunction = {
   type: 'function',
   function: {
-    name: 'search_database',
-    description: 'Search the internal database',
+    name: 'get_weather',
+    description: 'Get current weather for a location',
     parameters: {
       type: 'object',
       properties: {
-        query: { type: 'string' },
-        limit: { type: 'number' },
+        location: { type: 'string' },
       },
-      required: ['query'],
+      required: ['location'],
     },
+    url: 'https://api.example.com/weather',
+    method: 'GET',
+    timeout: 30,
   },
 };
 
@@ -168,26 +172,15 @@ const mcpTool = {
   url: 'https://mcp.example.com',
   allow: ['read', 'write'],
 };
-
-// Use in a run
-await client.run({
-  engine: 'tim-large',
-  input: {
-    instructions: '...',
-    tools: [parallelSearch, customSearch, mcpTool],
-  },
-});
 ```
 
 ### Error Handling
 
 ```typescript
-import { Subconscious, SubconsciousError, AuthenticationError, RateLimitError } from 'subconscious';
+import { SubconsciousError, AuthenticationError, RateLimitError } from 'subconscious';
 
 try {
-  const run = await client.run({
-    /* ... */
-  });
+  const run = await client.run({ /* ... */ });
 } catch (error) {
   if (error instanceof AuthenticationError) {
     console.error('Invalid API key');
@@ -195,8 +188,6 @@ try {
     console.error('Rate limited, retry later');
   } else if (error instanceof SubconsciousError) {
     console.error(`API error: ${error.code} - ${error.message}`);
-  } else {
-    throw error;
   }
 }
 ```
@@ -204,18 +195,9 @@ try {
 ### Cancellation
 
 ```typescript
-// Cancel with AbortController
+// Cancel via AbortController
 const controller = new AbortController();
-
-const stream = client.stream(
-  {
-    engine: 'tim-large',
-    input: { instructions: '...', tools: [] },
-  },
-  { signal: controller.signal },
-);
-
-// Cancel after 30 seconds
+const stream = client.stream(params, { signal: controller.signal });
 setTimeout(() => controller.abort(), 30000);
 
 // Or cancel a running run
@@ -240,37 +222,10 @@ The main client class.
 | Method                     | Description              |
 | -------------------------- | ------------------------ |
 | `run(params)`              | Create a new run         |
-| `stream(params, options?)` | Create a streaming run   |
+| `stream(params, options?)` | Stream text deltas       |
 | `get(runId)`               | Get run status           |
-| `wait(runId, options?)`    | Poll until run completes |
+| `wait(runId, options?)`    | Poll until completion    |
 | `cancel(runId)`            | Cancel a running run     |
-
-### Tool Types
-
-```typescript
-type PlatformTool = {
-  type: 'platform';
-  id: string;
-  options: Record<string, unknown>;
-};
-
-type FunctionTool = {
-  type: 'function';
-  function: {
-    name: string;
-    description?: string;
-    parameters: Record<string, unknown>;
-  };
-};
-
-type MCPTool = {
-  type: 'mcp';
-  url: string;
-  allow?: string[];
-};
-
-type Tool = PlatformTool | FunctionTool | MCPTool;
-```
 
 ### Engines
 
@@ -291,9 +246,24 @@ type Tool = PlatformTool | FunctionTool | MCPTool;
 | `canceled`  | Manually canceled      |
 | `timed_out` | Exceeded time limit    |
 
+## Requirements
+
+- Node.js ≥ 18
+- ESM only
+
 ## Contributing
 
-We welcome contributions! Please open an issue or submit a PR on [GitHub](https://github.com/subconscious-systems/subconscious-node).
+Contributions are welcome! Please feel free to submit a pull request.
+
+## License
+
+ISC
+
+## Support
+
+For support and questions:
+- Documentation: https://docs.subconscious.dev
+- Email: {hongyin,jack}@subconscious.dev
 
 ## License
 
