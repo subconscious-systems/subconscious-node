@@ -174,6 +174,87 @@ const mcpTool = {
 };
 ```
 
+### Structured Output
+
+Get structured responses using JSON Schema. We recommend using [Zod](https://zod.dev) to define your schema, then convert it with `zodToJsonSchema()`:
+
+```typescript
+import { z } from 'zod';
+import { Subconscious, zodToJsonSchema } from 'subconscious';
+
+const client = new Subconscious({ apiKey: process.env.SUBCONSCIOUS_API_KEY! });
+
+// Define your output schema with Zod
+const AnalysisSchema = z.object({
+  summary: z.string().describe('A brief summary of the findings'),
+  keyPoints: z.array(z.string()).describe('Main takeaways'),
+  sentiment: z.enum(['positive', 'neutral', 'negative']),
+  confidence: z.number().describe('Confidence score from 0 to 1'),
+});
+
+const run = await client.run({
+  engine: 'tim-large',
+  input: {
+    instructions: 'Analyze the latest news about electric vehicles',
+    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    answerFormat: zodToJsonSchema(AnalysisSchema, 'Analysis'),
+  },
+  options: { awaitCompletion: true },
+});
+
+// Result is typed according to your schema
+const result = run.result?.answer as z.infer<typeof AnalysisSchema>;
+console.log(result.summary);
+console.log(result.keyPoints);
+```
+
+You can also define a `reasoningFormat` to structure the agent's reasoning:
+
+```typescript
+const ReasoningSchema = z.object({
+  steps: z.array(z.object({
+    thought: z.string(),
+    action: z.string(),
+  })),
+  conclusion: z.string(),
+});
+
+const run = await client.run({
+  engine: 'tim-large',
+  input: {
+    instructions: 'Research and explain quantum computing',
+    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    answerFormat: zodToJsonSchema(AnalysisSchema, 'Analysis'),
+    reasoningFormat: zodToJsonSchema(ReasoningSchema, 'Reasoning'),
+  },
+  options: { awaitCompletion: true },
+});
+```
+
+#### Manual JSON Schema
+
+You can also provide the JSON Schema directly without Zod:
+
+```typescript
+const run = await client.run({
+  engine: 'tim-large',
+  input: {
+    instructions: 'Analyze this topic',
+    tools: [],
+    answerFormat: {
+      title: 'Analysis',
+      type: 'object',
+      properties: {
+        summary: { type: 'string', description: 'Brief summary' },
+        score: { type: 'number', description: 'Score from 1-10' },
+      },
+      required: ['summary', 'score'],
+    },
+  },
+  options: { awaitCompletion: true },
+});
+```
+
 ### Error Handling
 
 ```typescript
@@ -226,6 +307,17 @@ The main client class.
 | `get(runId)`               | Get run status           |
 | `wait(runId, options?)`    | Poll until completion    |
 | `cancel(runId)`            | Cancel a running run     |
+
+### `zodToJsonSchema(schema, title)`
+
+Convert a Zod schema to the JSON Schema format expected by `answerFormat` and `reasoningFormat`.
+
+| Param    | Type         | Description                        |
+| -------- | ------------ | ---------------------------------- |
+| `schema` | Zod object   | A Zod object schema (`z.object()`) |
+| `title`  | `string`     | Title for the schema               |
+
+Returns an `OutputSchema` compatible with `answerFormat` and `reasoningFormat`.
 
 ### Engines
 

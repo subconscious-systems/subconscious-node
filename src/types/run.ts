@@ -41,7 +41,11 @@ export type PlatformToolUsage = {
 
 export type RunInput = {
   instructions: string;
-  tools: import('./tool.js').Tool[];
+  tools?: import('./tool.js').Tool[];
+  /** JSON Schema for the answer output format. Use zodToJsonSchema() to generate from Zod. */
+  answerFormat?: import('./schema.js').OutputSchema;
+  /** JSON Schema for the reasoning output format. Use zodToJsonSchema() to generate from Zod. */
+  reasoningFormat?: import('./schema.js').OutputSchema;
 };
 
 export type RunOptions = {

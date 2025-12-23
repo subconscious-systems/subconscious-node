@@ -33,11 +33,20 @@
     "node": ">=18"
   },
   "packageManager": "pnpm@10.12.4",
+  "peerDependencies": {
+    "zod": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "eslint": "^9.39.2",
     "prettier": "^3.7.4",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "zod": "^3.25.64"
   }
 }

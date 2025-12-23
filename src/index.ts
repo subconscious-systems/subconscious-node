@@ -19,6 +19,20 @@ export type {
 // Types - Tools
 export type { Tool, PlatformTool, FunctionTool, MCPTool } from './types/tool.js';
 
+// Schema types and utilities
+export { zodToJsonSchema } from './types/schema.js';
+export type {
+  OutputSchema,
+  JSONSchemaProperty,
+  JSONSchemaString,
+  JSONSchemaNumber,
+  JSONSchemaBoolean,
+  JSONSchemaArray,
+  JSONSchemaObject,
+  JSONSchemaEnum,
+  JSONSchemaAnyOf,
+} from './types/schema.js';
+
 // Types - Stream Events
 export type { StreamEvent, DeltaEvent, DoneEvent, ErrorEvent } from './types/events.js';
 
