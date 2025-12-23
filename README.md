@@ -257,7 +257,7 @@ Contributions are welcome! Please feel free to submit a pull request.
 
 ## License
 
-ISC
+Apache-2.0
 
 ## Support
 
@@ -267,4 +267,4 @@ For support and questions:
 
 ## License
 
-ISC
+Apache-2.0
