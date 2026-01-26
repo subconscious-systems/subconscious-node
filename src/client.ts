@@ -18,7 +18,7 @@ export type SubconsciousOptions = {
  * const client = new Subconscious({ apiKey: process.env.SUBCONSCIOUS_API_KEY });
  *
  * const run = await client.run({
- *   engine: "tim-large",
+ *   engine: "tim-gpt",
  *   input: {
  *     instructions: "Search for the latest news about AI",
  *     tools: [{ type: "platform", id: "parallel_search", options: {} }],
@@ -75,18 +75,18 @@ export class Subconscious {
    * @returns An async generator yielding delta, done, or error events
    *
    * @example
-   * ```ts
-   * const stream = client.stream({
-   *   engine: "tim-large",
-   *   input: { instructions: "...", tools: [] },
-   * });
-   *
-   * for await (const event of stream) {
-   *   if (event.type === 'delta') {
-   *     process.stdout.write(event.content);
-   *   }
-   * }
-   * ```
+ * ```ts
+ * const stream = client.stream({
+ *   engine: "tim-gpt",
+ *   input: { instructions: "...", tools: [] },
+ * });
+ *
+ * for await (const event of stream) {
+ *   if (event.type === 'delta') {
+ *     process.stdout.write(event.content);
+ *   }
+ * }
+ * ```
    */
   stream(params: { engine: Engine; input: RunInput }, options?: StreamOptions): RunStream {
     return createStream(this.baseUrl, this.apiKey, params, options);

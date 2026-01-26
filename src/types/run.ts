@@ -1,4 +1,4 @@
-export type Engine = 'tim-small-preview' | 'tim-large' | 'timini' | (string & {});
+export type Engine = 'tim-edge' | 'tim-gpt' | 'tim-gpt-heavy' | (string & {});
 
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'timed_out';
 

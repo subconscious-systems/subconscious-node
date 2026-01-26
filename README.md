@@ -38,7 +38,7 @@ const client = new Subconscious({
 });
 
 const run = await client.run({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Search for the latest AI news and summarize the top 3 stories',
     tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
@@ -61,7 +61,7 @@ The simplest way to use the SDK—create a run and wait for completion:
 
 ```typescript
 const run = await client.run({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Analyze the latest trends in renewable energy',
     tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
@@ -79,7 +79,7 @@ Start a run without waiting, then check status later:
 
 ```typescript
 const run = await client.run({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Generate a comprehensive report',
     tools: [],
@@ -97,7 +97,7 @@ console.log(status.status); // 'queued' | 'running' | 'succeeded' | 'failed' | '
 
 ```typescript
 const run = await client.run({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Complex task',
     tools: [{ type: 'platform', id: 'parallel_search' }],
@@ -117,7 +117,7 @@ Stream text as it's generated:
 
 ```typescript
 const stream = client.stream({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Write a short essay about space exploration',
     tools: [{ type: 'platform', id: 'parallel_search' }],
@@ -193,7 +193,7 @@ const AnalysisSchema = z.object({
 });
 
 const run = await client.run({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Analyze the latest news about electric vehicles',
     tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
@@ -220,7 +220,7 @@ const ReasoningSchema = z.object({
 });
 
 const run = await client.run({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Research and explain quantum computing',
     tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
@@ -237,7 +237,7 @@ You can also provide the JSON Schema directly without Zod:
 
 ```typescript
 const run = await client.run({
-  engine: 'tim-large',
+  engine: 'tim-gpt',
   input: {
     instructions: 'Analyze this topic',
     tools: [],
@@ -321,11 +321,11 @@ Returns an `OutputSchema` compatible with `answerFormat` and `reasoningFormat`.
 
 ### Engines
 
-| Engine              | Type     | Availability | Description                                                       |
-| ------------------- | -------- | ------------ | ----------------------------------------------------------------- |
-| `tim-small-preview` | Unified  | Available    | Fast and tuned for search tasks                                   |
-| `tim-large`         | Compound | Available    | Generalized reasoning engine backed by the power of OpenAI        |
-| `timini`            | Compound | Coming soon  | Generalized reasoning engine backed by the power of Google Gemini |
+| Engine          | Description                                          |
+| --------------- | ---------------------------------------------------- |
+| `tim-edge`      | Fast, lightweight engine optimized for simple tasks  |
+| `tim-gpt`       | Balanced reasoning engine powered by OpenAI          |
+| `tim-gpt-heavy` | Advanced reasoning engine for complex tasks          |
 
 ### Run Status
 
