@@ -147,22 +147,20 @@ const parallelSearch = {
   options: {},
 };
 
-// Function tools (your own functions)
+// Function tools (your own HTTP endpoints)
 const customFunction = {
   type: 'function',
-  function: {
-    name: 'get_weather',
-    description: 'Get current weather for a location',
-    parameters: {
-      type: 'object',
-      properties: {
-        location: { type: 'string' },
-      },
-      required: ['location'],
+  name: 'get_weather',
+  description: 'Get current weather for a location',
+  url: 'https://api.example.com/weather',
+  method: 'GET',
+  timeout: 30,
+  parameters: {
+    type: 'object',
+    properties: {
+      location: { type: 'string', description: 'City name' },
     },
-    url: 'https://api.example.com/weather',
-    method: 'GET',
-    timeout: 30,
+    required: ['location'],
   },
 };
 
@@ -173,6 +171,61 @@ const mcpTool = {
   allow: ['read', 'write'],
 };
 ```
+
+### Tool Headers & Default Arguments
+
+Function tools support two powerful features for injecting data at call time:
+
+- **`headers`**: HTTP headers sent with the request to your tool endpoint
+- **`defaults`**: Parameter values hidden from the model and injected automatically
+
+```typescript
+const toolWithHeadersAndDefaults = {
+  type: 'function',
+  name: 'search_database',
+  description: 'Search the database',
+  url: 'https://api.example.com/search',
+  method: 'POST',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Search query' },
+      // Define these for validation, but they'll be hidden from the model
+      sessionId: { type: 'string' },
+      apiKey: { type: 'string' },
+    },
+    required: ['query'],  // Only query is required - model generates this
+  },
+  
+  // HEADERS: Sent as HTTP headers when this tool's endpoint is called
+  headers: {
+    'x-custom-auth': 'my-secret-token',
+    'x-request-source': 'my-app',
+  },
+  
+  // DEFAULTS: Injected into parameters, hidden from model
+  defaults: {
+    sessionId: 'user-session-abc123',
+    apiKey: 'secret-api-key',
+  },
+};
+```
+
+**How it works:**
+
+| Feature | Where it goes | When |
+|---------|---------------|------|
+| `headers` | HTTP request headers | Sent to your tool's URL |
+| `defaults` | Merged into request body `parameters` | At tool call time |
+
+**Default arguments flow:**
+1. Define all parameters in `properties` (required for validation)
+2. Parameters with defaults are **stripped from the schema** before the model sees them
+3. Model only generates values for non-defaulted parameters (e.g., `query`)
+4. At call time, defaults are merged into the request body
+5. Default values always take precedence over model-generated values
+
+Each tool can have its own headers and defaults - they're only applied when that specific tool is called.
 
 ### Structured Output
 
