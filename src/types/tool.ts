@@ -6,13 +6,15 @@ export type PlatformTool = {
 
 export type FunctionTool = {
   type: 'function';
-  function: {
-    name: string;
-    description?: string;
-    parameters: Record<string, unknown>;
-  };
+  name: string;
+  description: string;
+  url: string;
+  method: 'GET' | 'POST';
+  timeout?: number;
+  parameters: Record<string, unknown>;
+  headers?: Record<string, string>;
+  defaults?: Record<string, unknown>;
 };
-
 export type MCPTool = {
   type: 'mcp';
   url: string;
