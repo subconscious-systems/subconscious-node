@@ -1,6 +1,6 @@
 {
   "name": "subconscious",
-  "version": "0.3.0",
+  "version": "1.0.1",
   "description": "Official Node.js SDK for the Subconscious API",
   "type": "module",
   "exports": {
