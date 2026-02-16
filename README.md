@@ -41,7 +41,7 @@ const run = await client.run({
   engine: 'tim-gpt',
   input: {
     instructions: 'Search for the latest AI news and summarize the top 3 stories',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    tools: [{ type: 'platform', id: 'fast_search', options: {} }],
   },
   options: { awaitCompletion: true },
 });
@@ -64,7 +64,7 @@ const run = await client.run({
   engine: 'tim-gpt',
   input: {
     instructions: 'Analyze the latest trends in renewable energy',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    tools: [{ type: 'platform', id: 'fast_search', options: {} }],
   },
   options: { awaitCompletion: true },
 });
@@ -100,14 +100,14 @@ const run = await client.run({
   engine: 'tim-gpt',
   input: {
     instructions: 'Complex task',
-    tools: [{ type: 'platform', id: 'parallel_search' }],
+    tools: [{ type: 'platform', id: 'fast_search' }],
   },
 });
 
 // Wait with custom polling options
 const result = await client.wait(run.runId, {
-  intervalMs: 2000,  // Poll every 2 seconds
-  maxAttempts: 60,   // Give up after 60 attempts
+  intervalMs: 2000, // Poll every 2 seconds
+  maxAttempts: 60, // Give up after 60 attempts
 });
 ```
 
@@ -120,7 +120,7 @@ const stream = client.stream({
   engine: 'tim-gpt',
   input: {
     instructions: 'Write a short essay about space exploration',
-    tools: [{ type: 'platform', id: 'parallel_search' }],
+    tools: [{ type: 'platform', id: 'fast_search' }],
   },
 });
 
@@ -143,7 +143,7 @@ for await (const event of stream) {
 // Platform tools (hosted by Subconscious)
 const parallelSearch = {
   type: 'platform',
-  id: 'parallel_search',
+  id: 'fast_search',
   options: {},
 };
 
@@ -194,15 +194,15 @@ const toolWithHeadersAndDefaults = {
       sessionId: { type: 'string' },
       apiKey: { type: 'string' },
     },
-    required: ['query'],  // Only query is required - model generates this
+    required: ['query'], // Only query is required - model generates this
   },
-  
+
   // HEADERS: Sent as HTTP headers when this tool's endpoint is called
   headers: {
     'x-custom-auth': 'my-secret-token',
     'x-request-source': 'my-app',
   },
-  
+
   // DEFAULTS: Injected into parameters, hidden from model
   defaults: {
     sessionId: 'user-session-abc123',
@@ -213,12 +213,13 @@ const toolWithHeadersAndDefaults = {
 
 **How it works:**
 
-| Feature | Where it goes | When |
-|---------|---------------|------|
-| `headers` | HTTP request headers | Sent to your tool's URL |
-| `defaults` | Merged into request body `parameters` | At tool call time |
+| Feature    | Where it goes                         | When                    |
+| ---------- | ------------------------------------- | ----------------------- |
+| `headers`  | HTTP request headers                  | Sent to your tool's URL |
+| `defaults` | Merged into request body `parameters` | At tool call time       |
 
 **Default arguments flow:**
+
 1. Define all parameters in `properties` (required for validation)
 2. Parameters with defaults are **stripped from the schema** before the model sees them
 3. Model only generates values for non-defaulted parameters (e.g., `query`)
@@ -249,7 +250,7 @@ const run = await client.run({
   engine: 'tim-gpt',
   input: {
     instructions: 'Analyze the latest news about electric vehicles',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    tools: [{ type: 'platform', id: 'fast_search', options: {} }],
     answerFormat: zodToJsonSchema(AnalysisSchema, 'Analysis'),
   },
   options: { awaitCompletion: true },
@@ -265,10 +266,12 @@ You can also define a `reasoningFormat` to structure the agent's reasoning:
 
 ```typescript
 const ReasoningSchema = z.object({
-  steps: z.array(z.object({
-    thought: z.string(),
-    action: z.string(),
-  })),
+  steps: z.array(
+    z.object({
+      thought: z.string(),
+      action: z.string(),
+    }),
+  ),
   conclusion: z.string(),
 });
 
@@ -276,7 +279,7 @@ const run = await client.run({
   engine: 'tim-gpt',
   input: {
     instructions: 'Research and explain quantum computing',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
+    tools: [{ type: 'platform', id: 'fast_search', options: {} }],
     answerFormat: zodToJsonSchema(AnalysisSchema, 'Analysis'),
     reasoningFormat: zodToJsonSchema(ReasoningSchema, 'Reasoning'),
   },
@@ -314,7 +317,9 @@ const run = await client.run({
 import { SubconsciousError, AuthenticationError, RateLimitError } from 'subconscious';
 
 try {
-  const run = await client.run({ /* ... */ });
+  const run = await client.run({
+    /* ... */
+  });
 } catch (error) {
   if (error instanceof AuthenticationError) {
     console.error('Invalid API key');
@@ -353,32 +358,32 @@ The main client class.
 
 #### Methods
 
-| Method                     | Description              |
-| -------------------------- | ------------------------ |
-| `run(params)`              | Create a new run         |
-| `stream(params, options?)` | Stream text deltas       |
-| `get(runId)`               | Get run status           |
-| `wait(runId, options?)`    | Poll until completion    |
-| `cancel(runId)`            | Cancel a running run     |
+| Method                     | Description           |
+| -------------------------- | --------------------- |
+| `run(params)`              | Create a new run      |
+| `stream(params, options?)` | Stream text deltas    |
+| `get(runId)`               | Get run status        |
+| `wait(runId, options?)`    | Poll until completion |
+| `cancel(runId)`            | Cancel a running run  |
 
 ### `zodToJsonSchema(schema, title)`
 
 Convert a Zod schema to the JSON Schema format expected by `answerFormat` and `reasoningFormat`.
 
-| Param    | Type         | Description                        |
-| -------- | ------------ | ---------------------------------- |
-| `schema` | Zod object   | A Zod object schema (`z.object()`) |
-| `title`  | `string`     | Title for the schema               |
+| Param    | Type       | Description                        |
+| -------- | ---------- | ---------------------------------- |
+| `schema` | Zod object | A Zod object schema (`z.object()`) |
+| `title`  | `string`   | Title for the schema               |
 
 Returns an `OutputSchema` compatible with `answerFormat` and `reasoningFormat`.
 
 ### Engines
 
-| Engine          | Description                                          |
-| --------------- | ---------------------------------------------------- |
-| `tim-edge`      | Fast, lightweight engine optimized for simple tasks  |
-| `tim-gpt`       | Balanced reasoning engine powered by OpenAI          |
-| `tim-gpt-heavy` | Advanced reasoning engine for complex tasks          |
+| Engine          | Description                                         |
+| --------------- | --------------------------------------------------- |
+| `tim-edge`      | Fast, lightweight engine optimized for simple tasks |
+| `tim-gpt`       | Balanced reasoning engine powered by OpenAI         |
+| `tim-gpt-heavy` | Advanced reasoning engine for complex tasks         |
 
 ### Run Status
 
@@ -407,6 +412,7 @@ Apache-2.0
 ## Support
 
 For support and questions:
+
 - Documentation: https://docs.subconscious.dev
 - Email: {hongyin,jack}@subconscious.dev
 
