@@ -379,11 +379,13 @@ Returns an `OutputSchema` compatible with `answerFormat` and `reasoningFormat`.
 
 ### Engines
 
-| Engine          | Description                                         |
-| --------------- | --------------------------------------------------- |
-| `tim-edge`      | Fast, lightweight engine optimized for simple tasks |
-| `tim-gpt`       | Balanced reasoning engine powered by OpenAI         |
-| `tim-gpt-heavy` | Advanced reasoning engine for complex tasks         |
+| Engine          | Type     | Description                                                                     |
+| --------------- | -------- | ------------------------------------------------------------------------------- |
+| `tim`           | Unified  | Our flagship unified agent engine for a wide range of tasks                     |
+| `tim-edge`      | Unified  | Highly efficient engine tuned for performance with search tools                 |
+| `timini`        | Compound | Complex reasoning engine for long-context and tool use backed by Gemini-3 Flash |
+| `tim-gpt`       | Compound | Complex reasoning engine for long-context and tool use backed by OpenAI GPT-4.1 |
+| `tim-gpt-heavy` | Compound | Complex reasoning engine for long-context and tool use backed by OpenAI GPT-5.2 |
 
 ### Run Status
 
