@@ -1,21 +1,56 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { request } from './internal/http.js';
 import { pollUntilComplete, type PollOptions } from './internal/poll.js';
 import { createStream, type StreamOptions, type RunStream } from './stream.js';
 import type { Run, Engine, RunInput, RunOptions, RunParams } from './types/run.js';
 
 export type SubconsciousOptions = {
-  apiKey: string;
+  apiKey?: string;
   baseUrl?: string;
 };
 
 /**
+ * Resolve the API key using a standard precedence chain:
+ *  1. Explicitly passed `apiKey` option
+ *  2. `SUBCONSCIOUS_API_KEY` environment variable
+ *  3. `~/.subcon/config.json` (written by `subconscious login`)
+ */
+function resolveApiKey(explicit?: string): string {
+  if (explicit) return explicit;
+
+  const envKey = process.env['SUBCONSCIOUS_API_KEY'];
+  if (envKey) return envKey;
+
+  try {
+    const configPath = join(homedir(), '.subcon', 'config.json');
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    if (config.subconscious_api_key) return config.subconscious_api_key;
+  } catch {
+    // Config file doesn't exist or is malformed — fall through
+  }
+
+  throw new Error(
+    'No API key found. Either:\n' +
+      '  • Pass { apiKey } to the Subconscious constructor\n' +
+      '  • Set SUBCONSCIOUS_API_KEY environment variable\n' +
+      '  • Run `npx subconscious login` to authenticate',
+  );
+}
+
+/**
  * The main Subconscious API client.
+ *
+ * The API key is resolved automatically if not provided:
+ * `apiKey` option → `SUBCONSCIOUS_API_KEY` env var → `~/.subcon/config.json`.
  *
  * @example
  * ```ts
  * import { Subconscious } from "subconscious";
  *
- * const client = new Subconscious({ apiKey: process.env.SUBCONSCIOUS_API_KEY });
+ * // Key auto-resolved from env or ~/.subcon/config.json
+ * const client = new Subconscious();
  *
  * const run = await client.run({
  *   engine: "tim-gpt",
@@ -33,12 +68,9 @@ export class Subconscious {
   private readonly baseUrl: string;
   private readonly apiKey: string;
 
-  constructor(opts: SubconsciousOptions) {
-    if (!opts.apiKey) {
-      throw new Error('apiKey is required');
-    }
+  constructor(opts: SubconsciousOptions = {}) {
+    this.apiKey = resolveApiKey(opts.apiKey);
     this.baseUrl = opts.baseUrl ?? 'https://api.subconscious.dev/v1';
-    this.apiKey = opts.apiKey;
   }
 
   /**
