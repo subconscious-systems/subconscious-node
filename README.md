@@ -180,11 +180,11 @@ const customFunction = {
   },
 };
 
-// MCP tools
+// MCP tools (connect to any MCP server)
 const mcpTool = {
   type: 'mcp',
-  url: 'https://mcp.example.com',
-  allow: ['read', 'write'],
+  server: 'https://mcp.example.com',
+  allowedTools: ['search', 'get_page'],
 };
 ```
 
@@ -243,6 +243,83 @@ const toolWithHeadersAndDefaults = {
 5. Default values always take precedence over model-generated values
 
 Each tool can have its own headers and defaults - they're only applied when that specific tool is called.
+
+### MCP Tools
+
+Connect to any [Model Context Protocol](https://modelcontextprotocol.io/) server and use its tools in your runs. Subconscious discovers tools from the server, filters by your `allowedTools` list, and proxies calls automatically.
+
+```typescript
+import type { MCPTool, McpAuth } from 'subconscious';
+
+// Basic — use all tools from an MCP server
+const run = await client.run({
+  engine: 'tim-gpt',
+  input: {
+    instructions: 'Find my recent meeting notes',
+    tools: [
+      { type: 'mcp', server: 'https://mcp.notion.so/v1' },
+    ],
+  },
+  options: { awaitCompletion: true },
+});
+
+// Filter to specific tools (case-insensitive)
+const run2 = await client.run({
+  engine: 'tim-gpt',
+  input: {
+    instructions: 'Search my documents',
+    tools: [
+      {
+        type: 'mcp',
+        server: 'https://mcp.notion.so/v1',
+        allowedTools: ['search', 'get_page'],
+      },
+    ],
+  },
+  options: { awaitCompletion: true },
+});
+
+// With bearer auth
+const run3 = await client.run({
+  engine: 'tim-gpt',
+  input: {
+    instructions: 'Check my calendar',
+    tools: [
+      {
+        type: 'mcp',
+        server: 'https://mcp.google.com/v1',
+        auth: { type: 'bearer', token: 'your-oauth-token' },
+      },
+    ],
+  },
+  options: { awaitCompletion: true },
+});
+
+// API key auth with custom header
+const run4 = await client.run({
+  engine: 'tim-gpt',
+  input: {
+    instructions: 'Query the database',
+    tools: [
+      {
+        type: 'mcp',
+        server: 'https://mcp.example.com',
+        auth: { type: 'api_key', token: 'key123', header: 'X-Api-Key' },
+      },
+    ],
+  },
+  options: { awaitCompletion: true },
+});
+```
+
+**`allowedTools` filtering:**
+
+| Value | Behavior |
+| --- | --- |
+| Omitted / `undefined` | All tools from the server are enabled |
+| `["*"]` | All tools enabled (explicit wildcard) |
+| `["search", "fetch"]` | Only these tools (case-insensitive) |
+| `[]` | No tools (blocks all) |
 
 ### Structured Output
 
