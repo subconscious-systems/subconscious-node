@@ -183,7 +183,7 @@ const customFunction = {
 // MCP tools (connect to any MCP server)
 const mcpTool = {
   type: 'mcp',
-  server: 'https://mcp.example.com',
+  url: 'https://mcp.example.com',
   allowedTools: ['search', 'get_page'],
 };
 ```
@@ -248,16 +248,42 @@ Each tool can have its own headers and defaults - they're only applied when that
 
 Connect to any [Model Context Protocol](https://modelcontextprotocol.io/) server and use its tools in your runs. Subconscious discovers tools from the server, filters by your `allowedTools` list, and proxies calls automatically.
 
+#### Authentication
+
+MCP servers that require authentication accept an `auth` object. There are two supported methods:
+
+| Method | When to use | Header sent |
+| --- | --- | --- |
+| **Bearer** | Most common — OAuth tokens, JWTs, etc. | `Authorization: Bearer <token>` |
+| **API key** | Service-specific API keys | `<header>: <token>` (header is typically `X-Api-Key` — check your MCP server's docs) |
+
 ```typescript
 import type { MCPTool, McpAuth } from 'subconscious';
 
-// Basic — use all tools from an MCP server
+/**
+ * McpAuth takes one of two shapes:
+ *
+ * Bearer auth (most common):
+ *   { type: 'bearer', token: '<your-oauth-or-jwt-token>' }
+ *   → sends header: Authorization: Bearer <token>
+ *
+ * API key auth:
+ *   { type: 'api_key', token: '<your-api-key>', header: 'X-Api-Key' }
+ *   → sends header: X-Api-Key: <token>
+ *   The header name varies by provider — check the MCP server you're connecting to.
+ */
+```
+
+#### Examples
+
+```typescript
+// Basic — use all tools from an MCP server (no auth)
 const run = await client.run({
   engine: 'tim-gpt',
   input: {
     instructions: 'Find my recent meeting notes',
     tools: [
-      { type: 'mcp', server: 'https://mcp.notion.so/v1' },
+      { type: 'mcp', url: 'https://mcp.notion.so/v1' },
     ],
   },
   options: { awaitCompletion: true },
@@ -271,7 +297,7 @@ const run2 = await client.run({
     tools: [
       {
         type: 'mcp',
-        server: 'https://mcp.notion.so/v1',
+        url: 'https://mcp.notion.so/v1',
         allowedTools: ['search', 'get_page'],
       },
     ],
@@ -279,7 +305,7 @@ const run2 = await client.run({
   options: { awaitCompletion: true },
 });
 
-// With bearer auth
+// Bearer auth — most common, used with OAuth/JWT tokens
 const run3 = await client.run({
   engine: 'tim-gpt',
   input: {
@@ -287,7 +313,7 @@ const run3 = await client.run({
     tools: [
       {
         type: 'mcp',
-        server: 'https://mcp.google.com/v1',
+        url: 'https://mcp.google.com/v1',
         auth: { type: 'bearer', token: 'your-oauth-token' },
       },
     ],
@@ -295,7 +321,7 @@ const run3 = await client.run({
   options: { awaitCompletion: true },
 });
 
-// API key auth with custom header
+// API key auth — header is usually X-Api-Key, but check your provider's docs
 const run4 = await client.run({
   engine: 'tim-gpt',
   input: {
@@ -303,7 +329,7 @@ const run4 = await client.run({
     tools: [
       {
         type: 'mcp',
-        server: 'https://mcp.example.com',
+        url: 'https://mcp.example.com',
         auth: { type: 'api_key', token: 'key123', header: 'X-Api-Key' },
       },
     ],

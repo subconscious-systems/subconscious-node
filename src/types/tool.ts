@@ -16,17 +16,28 @@ export type FunctionTool = {
   defaults?: Record<string, unknown>;
 };
 
+/**
+ * MCP Authentication
+ * Used for MCP tools that require authentication.
+ * Will take the shape of one of the following:
+ * - Bearer:  { type: "bearer", token: "<token>" }
+ * - API key: { type: "api_key", token: "<token>", header: "<header>" }
+ *
+ * Bearer auth is the most common method (e.g. OAuth tokens).
+ * For API key auth, the header is typically `X-Api-Key` but may vary —
+ * check the documentation of the MCP server you are connecting to.
+ */
 export type McpAuth = {
   type: 'bearer' | 'api_key';
-  token?: string;
-  /** For api_key auth, the header name to send the token in. */
+  token: string;
+  /** For api_key auth, the header name to send the token in (e.g. `X-Api-Key`). */
   header?: string;
 };
 
 export type MCPTool = {
   type: 'mcp';
   /** URL of the MCP server. */
-  server: string;
+  url: string;
   /**
    * Tool names to enable. Case-insensitive.
    * - `["*"]` or omit for all tools.
