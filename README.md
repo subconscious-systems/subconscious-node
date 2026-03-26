@@ -250,7 +250,7 @@ Connect to any [Model Context Protocol](https://modelcontextprotocol.io/) server
 
 #### Authentication
 
-MCP servers that require authentication accept an `auth` object. There are two supported methods:
+MCP servers that require authentication accept an `auth` object. The auth translates to an HTTP header sent with every tool call:
 
 | Method | When to use | Header sent |
 | --- | --- | --- |
@@ -261,15 +261,15 @@ MCP servers that require authentication accept an `auth` object. There are two s
 import type { MCPTool, McpAuth } from 'subconscious';
 
 /**
- * McpAuth takes one of two shapes:
+ * McpAuth translates to an HTTP header sent with every tool call:
  *
  * Bearer auth (most common):
  *   { type: 'bearer', token: '<your-oauth-or-jwt-token>' }
- *   → sends header: Authorization: Bearer <token>
+ *   → header: { "Authorization": "Bearer <token>" }
  *
  * API key auth:
  *   { type: 'api_key', token: '<your-api-key>', header: 'X-Api-Key' }
- *   → sends header: X-Api-Key: <token>
+ *   → header: { "X-Api-Key": "<token>" }
  *   The header name varies by provider — check the MCP server you're connecting to.
  */
 ```
