@@ -244,6 +244,24 @@ const toolWithHeadersAndDefaults = {
 
 Each tool can have its own headers and defaults - they're only applied when that specific tool is called.
 
+### Skills
+
+Attach reusable knowledge packages to your runs. Skills use progressive disclosure: the agent sees a summary in its system prompt and loads full instructions on demand.
+
+```typescript
+const run = await client.run({
+  engine: 'tim-gpt',
+  input: {
+    instructions: 'Build a REST API following our team standards',
+    tools: [{ type: 'platform', id: 'web_search' }],
+    skills: ['api-design', 'error-handling'],
+  },
+  options: { awaitCompletion: true },
+});
+```
+
+Skills are resolved by name. You can browse and create skills at [subconscious.dev/platform/skills](https://www.subconscious.dev/platform/skills) or via the [Skills API](https://docs.subconscious.dev/core-concepts/skills).
+
 ### Structured Output
 
 Get structured responses using JSON Schema. We recommend using [Zod](https://zod.dev) to define your schema, then convert it with `zodToJsonSchema()`:
@@ -346,6 +364,35 @@ try {
   }
 }
 ```
+
+### Webhooks
+
+Get a POST when runs complete instead of polling.
+
+**Per-run callback**: pass `callbackUrl` on any run:
+
+```typescript
+const run = await client.run({
+  engine: 'tim-gpt',
+  input: { instructions: 'Generate a report' },
+  output: { callbackUrl: 'https://your-server.com/webhook' },
+});
+```
+
+**Org-wide subscriptions**: receive webhooks for all runs. Manage in the [dashboard](https://www.subconscious.dev/platform/webhooks) or via the API:
+
+```bash
+curl -X POST https://api.subconscious.dev/v1/webhooks/subscriptions \
+  -H "Authorization: Bearer $SUBCONSCIOUS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "callbackUrl": "https://your-server.com/webhook",
+    "eventTypes": ["job.succeeded", "job.failed"],
+    "secret": "your-signing-secret"
+  }'
+```
+
+Subscriptions support enable/disable, HMAC-SHA256 signing, and a delivery log. See the [webhooks docs](https://docs.subconscious.dev/core-concepts/async-webhooks) for more.
 
 ### Cancellation
 
