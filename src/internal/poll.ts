@@ -1,13 +1,8 @@
 import { request } from './http.js';
-import type { Run, RunStatus } from '../types/run.js';
+import { augmentRun } from '../helpers.js';
+import { RunSchema, type PollOptions, type Run, type RunStatus } from '../types.js';
 
 const TERMINAL_STATUSES: RunStatus[] = ['succeeded', 'failed', 'canceled', 'timed_out'];
-
-export type PollOptions = {
-  intervalMs?: number;
-  maxAttempts?: number;
-  signal?: AbortSignal;
-};
 
 export async function pollUntilComplete(
   url: string,
@@ -23,10 +18,10 @@ export async function pollUntilComplete(
       throw new Error('Polling aborted');
     }
 
-    const run = await request<Run>(url, { headers, signal });
+    const run = await request(url, RunSchema, { headers, signal });
 
     if (run.status && TERMINAL_STATUSES.includes(run.status)) {
-      return run;
+      return augmentRun(run);
     }
 
     attempts++;
