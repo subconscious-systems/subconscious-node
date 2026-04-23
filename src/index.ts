@@ -113,6 +113,8 @@ export {
   type RunInputWire,
   type RunOptionsWire,
   type RunOutputWire,
+  parseAnswer,
+  augmentRun,
 } from './helpers.js';
 
 // Errors

@@ -102,7 +102,7 @@ export type JSONSchemaProperty =
   | JSONSchemaAnyOf;
 
 /**
- * The format expected by `answerFormat` / `reasoningFormat`.
+ * The format expected by `answerFormat`.
  * A JSON Schema object with a title.
  */
 export type OutputSchema = {
@@ -151,6 +151,12 @@ export const ReasoningTaskSchema: z.ZodType<ReasoningTask> = z.lazy(() =>
 export const RunResultSchema = z.object({
   answer: z.string().default(''),
   reasoning: z.array(ReasoningTaskSchema).optional(),
+  /**
+   * Best-effort `JSON.parse` of `answer`, populated by the SDK after
+   * receiving the response. Never sent on the wire. `undefined` when
+   * `answer` is empty or not valid JSON.
+   */
+  parsedAnswer: z.unknown().optional(),
 });
 export type RunResult = z.infer<typeof RunResultSchema>;
 
@@ -335,8 +341,6 @@ export type RunInput = {
    * (from {@link zodToOutputSchema}) or a Zod schema directly — the SDK converts.
    */
   answerFormat?: OutputSchema | z.ZodType;
-  /** Same as `answerFormat` but for the reasoning output. */
-  reasoningFormat?: OutputSchema | z.ZodType;
   /** Canonical multimodal content blocks. Use the `Image` helper to build image blocks. */
   content?: ContentBlock[];
 };

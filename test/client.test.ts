@@ -111,4 +111,105 @@ describe('Subconscious.run', () => {
     const sent = JSON.parse(calls[0]!.init.body as string);
     expect(sent.options).toEqual({ timeout: 10 });
   });
+
+  it('populates parsedAnswer on the awaited run when answer is JSON', async () => {
+    mockFetchSequence([
+      { body: { runId: 'r-5' } },
+      {
+        body: {
+          runId: 'r-5',
+          status: 'succeeded',
+          result: { answer: '{"name":"ada","age":36}' },
+        },
+      },
+    ]);
+    const client = new Subconscious({ apiKey: 'test-key' });
+
+    const run = await client.run({
+      engine: 'tim',
+      input: { instructions: 'hi' },
+      options: { awaitCompletion: true },
+    });
+
+    expect(run.result?.answer).toBe('{"name":"ada","age":36}');
+    expect(run.result?.parsedAnswer).toEqual({ name: 'ada', age: 36 });
+  });
+
+  it('leaves parsedAnswer undefined on the awaited run when answer is plain text', async () => {
+    mockFetchSequence([
+      { body: { runId: 'r-6' } },
+      { body: { runId: 'r-6', status: 'succeeded', result: { answer: 'hello world' } } },
+    ]);
+    const client = new Subconscious({ apiKey: 'test-key' });
+
+    const run = await client.run({
+      engine: 'tim',
+      input: { instructions: 'hi' },
+      options: { awaitCompletion: true },
+    });
+
+    expect(run.result?.answer).toBe('hello world');
+    expect(run.result?.parsedAnswer).toBeUndefined();
+  });
+});
+
+describe('Subconscious.get', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('populates parsedAnswer when the response answer is JSON', async () => {
+    mockFetchSequence([
+      {
+        body: {
+          runId: 'r-g',
+          status: 'succeeded',
+          result: { answer: '[1,2,3]' },
+        },
+      },
+    ]);
+    const client = new Subconscious({ apiKey: 'test-key' });
+
+    const run = await client.get('r-g');
+    expect(run.result?.parsedAnswer).toEqual([1, 2, 3]);
+  });
+
+  it('leaves parsedAnswer undefined when the response answer is not JSON', async () => {
+    mockFetchSequence([
+      {
+        body: {
+          runId: 'r-g2',
+          status: 'succeeded',
+          result: { answer: 'free text' },
+        },
+      },
+    ]);
+    const client = new Subconscious({ apiKey: 'test-key' });
+
+    const run = await client.get('r-g2');
+    expect(run.result?.parsedAnswer).toBeUndefined();
+  });
+});
+
+describe('Subconscious.cancel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('augments the cancel response with parsedAnswer when present', async () => {
+    mockFetchSequence([
+      {
+        body: {
+          runId: 'r-c',
+          status: 'canceled',
+          result: { answer: '{"partial":true}' },
+        },
+      },
+    ]);
+    const client = new Subconscious({ apiKey: 'test-key' });
+
+    const run = await client.cancel('r-c');
+    expect(run.status).toBe('canceled');
+    expect(run.result?.parsedAnswer).toEqual({ partial: true });
+  });
 });

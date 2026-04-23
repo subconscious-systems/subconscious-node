@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { request } from './internal/http.js';
 import { pollUntilComplete } from './internal/poll.js';
 import { createStream, type StreamOptions, type RunStream } from './stream.js';
-import { buildRunBody } from './helpers.js';
+import { augmentRun, buildRunBody } from './helpers.js';
 import {
   RunSchema,
   type Engine,
@@ -103,9 +103,10 @@ export class Subconscious {
   }
 
   async get(runId: string): Promise<Run> {
-    return request(`${this.baseUrl}/runs/${runId}`, RunSchema, {
+    const run = await request(`${this.baseUrl}/runs/${runId}`, RunSchema, {
       headers: this.authHeaders(),
     });
+    return augmentRun(run);
   }
 
   async wait(runId: string, options?: PollOptions): Promise<Run> {
@@ -113,10 +114,11 @@ export class Subconscious {
   }
 
   async cancel(runId: string): Promise<Run> {
-    return request(`${this.baseUrl}/runs/${runId}/cancel`, RunSchema, {
+    const run = await request(`${this.baseUrl}/runs/${runId}/cancel`, RunSchema, {
       method: 'POST',
       headers: this.authHeaders(),
     });
+    return augmentRun(run);
   }
 
   private authHeaders(): Record<string, string> {

@@ -19,6 +19,7 @@ import {
   type AudioContent,
   type FileContent,
   type ToolResponse,
+  type Run,
   type RunInput,
   type RunOptions,
   type Engine,
@@ -42,7 +43,7 @@ function isZodType(x: unknown): x is z.ZodType {
  *
  * @param schema - A Zod schema (typically `z.object(...)`)
  * @param title - The title for the schema (required)
- * @returns A JSON Schema compatible with `answerFormat` / `reasoningFormat`
+ * @returns A JSON Schema compatible with `answerFormat`
  *
  * @example
  * ```ts
@@ -139,7 +140,6 @@ const RunInputWireSchema = z.object({
   resources: z.array(z.string()).optional(),
   skills: z.array(z.string()).optional(),
   answerFormat: z.record(z.string(), z.unknown()).optional(),
-  reasoningFormat: z.record(z.string(), z.unknown()).optional(),
 });
 export type RunInputWire = z.infer<typeof RunInputWireSchema>;
 
@@ -151,7 +151,6 @@ function buildRunInputWire(input: RunInput): RunInputWire {
     resources: input.resources && input.resources.length > 0 ? input.resources : undefined,
     skills: input.skills && input.skills.length > 0 ? input.skills : undefined,
     answerFormat: resolveFormat(input.answerFormat),
-    reasoningFormat: resolveFormat(input.reasoningFormat),
   });
 }
 
@@ -291,3 +290,43 @@ export const ToolResponseBuilder = {
     };
   },
 };
+
+// ---------------------------------------------------------------------------
+// Answer parsing — client-side decoding of the API's `answer` string.
+// ---------------------------------------------------------------------------
+
+/**
+ * Best-effort `JSON.parse` of the `answer` field returned by the API.
+ *
+ * The API contract is `answer: string` in all cases — when the caller
+ * supplied an `answerFormat`, the string is JSON-encoded. This helper
+ * decodes it back into a native value. No schema validation happens
+ * here; the consumer is expected to validate the shape themselves.
+ *
+ * Returns `undefined` when the input is empty, not valid JSON, or
+ * `undefined`.
+ */
+export function parseAnswer(answer: string | undefined): unknown | undefined {
+  if (!answer) return undefined;
+  try {
+    return JSON.parse(answer);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Return a copy of `run` with `result.parsedAnswer` populated via
+ * {@link parseAnswer}. No-op when `result` is absent. Does not mutate
+ * the input.
+ */
+export function augmentRun(run: Run): Run {
+  if (!run.result || !run.result.answer) return run;
+  return {
+    ...run,
+    result: {
+      ...run.result,
+      parsedAnswer: parseAnswer(run.result.answer),
+    },
+  };
+}

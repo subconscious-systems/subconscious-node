@@ -204,6 +204,57 @@ Now exported from the package root: `Image`, `ContentBlock`, `TextContent`, `Ima
 
 Removed: `ReasoningNode`, `ModelUsage`, `PlatformToolUsage` — replaced by `ReasoningTask` / the new flat `Usage` shape.
 
+## 12. `reasoningFormat` removed from `RunInput`
+
+The `reasoningFormat` field is gone. If you were shaping the reasoning trace with a JSON/Zod schema, fold that guidance into your `instructions` or into `answerFormat` instead — the agent's final output is the contract, and the reasoning trace is best treated as a read-only byproduct.
+
+**Before:**
+
+```ts
+await client.run({
+  engine: 'tim',
+  input: {
+    instructions: '...',
+    answerFormat: AnswerSchema,
+    reasoningFormat: ReasoningSchema,
+  },
+});
+```
+
+**After:**
+
+```ts
+await client.run({
+  engine: 'tim',
+  input: {
+    instructions: '...',
+    answerFormat: AnswerSchema,
+  },
+});
+```
+
+Requests that still include `reasoningFormat` are rejected by the API.
+
+## 13. `RunResult.parsedAnswer`
+
+`result.answer` is always a `string` on the wire, even when `answerFormat` is supplied — the API JSON-encodes the structured value. The SDK now attaches a `parsedAnswer` companion field on every response that runs through the client (`run`, `get`, `wait`, `cancel`), populated via a best-effort `JSON.parse` of `answer`.
+
+```ts
+const run = await client.run({
+  engine: 'tim',
+  input: {
+    instructions: 'return JSON for a person',
+    answerFormat: z.object({ name: z.string(), age: z.number() }),
+  },
+  options: { awaitCompletion: true },
+});
+
+run.result?.answer;       // '{"name":"ada","age":36}'  (raw string)
+run.result?.parsedAnswer; // { name: 'ada', age: 36 }    (decoded)
+```
+
+`parsedAnswer` is typed as `unknown` — cast or validate with your schema of choice. It is `undefined` when `answer` is empty or not valid JSON.
+
 ## Upgrading
 
 ```bash

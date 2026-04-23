@@ -1,4 +1,5 @@
 import { request } from './http.js';
+import { augmentRun } from '../helpers.js';
 import { RunSchema, type PollOptions, type Run, type RunStatus } from '../types.js';
 
 const TERMINAL_STATUSES: RunStatus[] = ['succeeded', 'failed', 'canceled', 'timed_out'];
@@ -20,7 +21,7 @@ export async function pollUntilComplete(
     const run = await request(url, RunSchema, { headers, signal });
 
     if (run.status && TERMINAL_STATUSES.includes(run.status)) {
-      return run;
+      return augmentRun(run);
     }
 
     attempts++;

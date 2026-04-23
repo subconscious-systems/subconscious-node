@@ -118,16 +118,14 @@ describe('buildCreateRunBody (wire-format)', () => {
     expect(body.input.tools[0]?.['id']).toBe('fast_search');
   });
 
-  it('emits camelCase keys on wire for answerFormat / reasoningFormat', () => {
+  it('emits camelCase answerFormat key on the wire', () => {
     const schema = z.object({ value: z.number() });
     const body = buildCreateRunBody('tim', {
       instructions: 'test',
       answerFormat: schema,
-      reasoningFormat: schema,
     });
     const wire = JSON.parse(toWireBody(body));
     expect(wire.input).toHaveProperty('answerFormat');
-    expect(wire.input).toHaveProperty('reasoningFormat');
     expect(wire.input).not.toHaveProperty('answer_format');
   });
 
