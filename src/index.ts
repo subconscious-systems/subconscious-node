@@ -11,7 +11,6 @@ export type { RunStream, StreamOptions } from './stream.js';
 export {
   // Engine + status
   EngineSchema,
-  KNOWN_ENGINES,
   RunStatusSchema,
   type Engine,
   type RunStatus,

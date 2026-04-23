@@ -11,25 +11,8 @@ import { z } from 'zod';
 // Engine + RunStatus literals
 // ---------------------------------------------------------------------------
 
-/**
- * The canonical list of public, non-deprecated engines. Exported for callers
- * who want a typed enum; the wire-format schema ({@link EngineSchema}) accepts
- * any string so the SDK can forward newly-released engines the client hasn't
- * been updated to know about yet.
- */
-export const KNOWN_ENGINES = [
-  'tim',
-  'tim-edge',
-  'tim-claude',
-  'tim-claude-heavy',
-  'tim-oss-local',
-  'tim-1.5',
-  'tim-gpt-heavy-tc',
-] as const;
-
-/** Engine identifier — accepts any string so forward-compat engines work. */
 export const EngineSchema = z.string();
-export type Engine = (typeof KNOWN_ENGINES)[number] | (string & {});
+export type Engine = string;
 
 export const RunStatusSchema = z.enum([
   'queued',
