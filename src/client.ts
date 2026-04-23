@@ -4,7 +4,8 @@ import { homedir } from 'node:os';
 import { request } from './internal/http.js';
 import { pollUntilComplete, type PollOptions } from './internal/poll.js';
 import { createStream, type StreamOptions, type RunStream } from './stream.js';
-import type { Run, Engine, RunInput, RunOptions, RunParams } from './types/run.js';
+import { buildRunBody } from './internal/body.js';
+import type { Run, Engine, RunInput, RunParams } from './types/run.js';
 
 export type SubconsciousOptions = {
   apiKey?: string;
@@ -53,10 +54,10 @@ function resolveApiKey(explicit?: string): string {
  * const client = new Subconscious();
  *
  * const run = await client.run({
- *   engine: "tim-gpt",
+ *   engine: "tim",
  *   input: {
  *     instructions: "Search for the latest news about AI",
- *     tools: [{ type: "platform", id: "parallel_search", options: {} }],
+ *     tools: [{ type: "platform", id: "web_search" }],
  *   },
  *   options: { awaitCompletion: true },
  * });
@@ -77,18 +78,19 @@ export class Subconscious {
    * Create a new run.
    *
    * @param params.engine - The engine to use for the run
-   * @param params.input - The input configuration including instructions and tools
-   * @param params.options.awaitCompletion - If true, poll until the run completes
+   * @param params.input - The input configuration including instructions, tools, skills
+   * @param params.options.awaitCompletion - Client-side only. If true, poll until the run completes.
+   * @param params.options.timeout - Server-side max run duration (1–3600s).
+   * @param params.options.maxStepTokens - Server-side per-step token cap (256–20000).
+   * @param params.options.output - Server-side output delivery (webhook, response shape).
    * @returns The created run, optionally with results if awaitCompletion is true
    */
   async run(params: RunParams): Promise<Run> {
+    const body = buildRunBody(params.engine, params.input, params.options);
     const { runId } = await request<{ runId: string }>(`${this.baseUrl}/runs`, {
       method: 'POST',
       headers: this.authHeaders(),
-      body: JSON.stringify({
-        engine: params.engine,
-        input: params.input,
-      }),
+      body,
     });
 
     if (!params.options?.awaitCompletion) {
@@ -101,34 +103,25 @@ export class Subconscious {
   /**
    * Create a streaming run that yields text deltas as they arrive.
    *
-   * @param params.engine - The engine to use for the run
-   * @param params.input - The input configuration including instructions and tools
-   * @param options.signal - AbortSignal to cancel the stream
-   * @returns An async generator yielding delta, done, or error events
-   *
    * @example
- * ```ts
- * const stream = client.stream({
- *   engine: "tim-gpt",
- *   input: { instructions: "...", tools: [] },
- * });
- *
- * for await (const event of stream) {
- *   if (event.type === 'delta') {
- *     process.stdout.write(event.content);
- *   }
- * }
- * ```
+   * ```ts
+   * const stream = client.stream({
+   *   engine: "tim",
+   *   input: { instructions: "...", tools: [] },
+   * });
+   *
+   * for await (const event of stream) {
+   *   if (event.type === 'delta') {
+   *     process.stdout.write(event.content);
+   *   }
+   * }
+   * ```
    */
   stream(params: { engine: Engine; input: RunInput }, options?: StreamOptions): RunStream {
     return createStream(this.baseUrl, this.apiKey, params, options);
   }
 
-  /**
-   * Get the current state of a run.
-   *
-   * @param runId - The ID of the run to retrieve
-   */
+  /** Get the current state of a run. */
   async get(runId: string): Promise<Run> {
     return request<Run>(`${this.baseUrl}/runs/${runId}`, {
       headers: this.authHeaders(),
@@ -147,11 +140,7 @@ export class Subconscious {
     return pollUntilComplete(`${this.baseUrl}/runs/${runId}`, this.authHeaders(), options);
   }
 
-  /**
-   * Cancel a running run.
-   *
-   * @param runId - The ID of the run to cancel
-   */
+  /** Cancel a running run. */
   async cancel(runId: string): Promise<Run> {
     return request<Run>(`${this.baseUrl}/runs/${runId}/cancel`, {
       method: 'POST',

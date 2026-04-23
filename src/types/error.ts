@@ -57,3 +57,11 @@ export class ValidationError extends SubconsciousError {
     this.name = 'ValidationError';
   }
 }
+
+/** Raised when the serialized run request exceeds the API size limit. */
+export class RequestTooLargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RequestTooLargeError';
+  }
+}

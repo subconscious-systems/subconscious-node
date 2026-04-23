@@ -1,4 +1,4 @@
-// Re-export run-related types for direct import
+// Re-export run-related types for direct import.
 export type {
   Run,
   RunStatus,
@@ -6,6 +6,9 @@ export type {
   RunInput,
   RunOptions,
   RunParams,
-  ReasoningNode,
+  RunError,
+  ReasoningTask,
+  AgentToolUse,
+  Usage,
   Engine,
 } from './types/run.js';

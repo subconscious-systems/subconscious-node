@@ -13,28 +13,40 @@ export type RequestOptions = RequestInit & {
 };
 
 async function parseErrorResponse(res: Response): Promise<SubconsciousError> {
+  let body: unknown = null;
   try {
-    const body = (await res.json()) as APIErrorResponse;
-    const { code, message, details } = body.error;
-
-    switch (code) {
-      case 'authentication_failed':
-        return new AuthenticationError(message);
-      case 'rate_limited':
-        return new RateLimitError(message);
-      case 'not_found':
-        return new NotFoundError(message);
-      case 'invalid_request':
-        return new ValidationError(message, details);
-      default:
-        return new SubconsciousError(code, message, res.status, details);
-    }
+    body = await res.json();
   } catch {
-    return new SubconsciousError(
-      mapStatusToCode(res.status),
-      res.statusText || `HTTP ${res.status}`,
-      res.status,
-    );
+    // Non-JSON error body — fall through.
+  }
+
+  let code: ErrorCode = mapStatusToCode(res.status);
+  let message: string = res.statusText || `HTTP ${res.status}`;
+  let details: Record<string, unknown> | undefined;
+
+  if (body && typeof body === 'object' && 'error' in body) {
+    const errField = (body as APIErrorResponse).error as unknown;
+    if (errField && typeof errField === 'object') {
+      const e = errField as APIErrorResponse['error'];
+      if (e.code) code = e.code;
+      if (e.message) message = e.message;
+      if (e.details) details = e.details;
+    } else if (typeof errField === 'string') {
+      message = errField;
+    }
+  }
+
+  switch (code) {
+    case 'authentication_failed':
+      return new AuthenticationError(message);
+    case 'rate_limited':
+      return new RateLimitError(message);
+    case 'not_found':
+      return new NotFoundError(message);
+    case 'invalid_request':
+      return new ValidationError(message, details);
+    default:
+      return new SubconsciousError(code, message, res.status, details);
   }
 }
 

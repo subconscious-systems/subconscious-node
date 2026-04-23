@@ -1,4 +1,5 @@
 import { requestStream } from './internal/http.js';
+import { buildRunBody } from './internal/body.js';
 import type { StreamEvent } from './types/events.js';
 import type { RunInput, Engine, Run } from './types/run.js';
 
@@ -12,10 +13,10 @@ export type RunStream = AsyncGenerator<StreamEvent, Run | undefined, undefined>;
  * Create a streaming run that yields events as they arrive.
  *
  * The API uses OpenAI-compatible SSE format:
- * - event: meta → { run_id }
- * - data: { choices: [{ delta: { content } }] }
- * - event: error → { error, details }
- * - data: [DONE]
+ *  - event: meta → { run_id }
+ *  - data: { choices: [{ delta: { content } }] }
+ *  - event: error → { error, details }
+ *  - data: [DONE]
  *
  * @internal Used by Subconscious.stream()
  */
@@ -28,16 +29,15 @@ export async function* createStream(
   },
   options: StreamOptions = {},
 ): RunStream {
+  const body = buildRunBody(params.engine, params.input);
+
   const response = await requestStream(`${baseUrl}/runs/stream`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      engine: params.engine,
-      input: params.input,
-    }),
+    body,
     signal: options.signal,
   });
 
