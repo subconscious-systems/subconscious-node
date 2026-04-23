@@ -1,6 +1,6 @@
 {
   "name": "subconscious",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Official Node.js SDK for the Subconscious API",
   "type": "module",
   "exports": {
@@ -34,13 +34,8 @@
     "node": ">=18"
   },
   "packageManager": "pnpm@10.12.4",
-  "peerDependencies": {
-    "zod": ">=3.0.0"
-  },
-  "peerDependenciesMeta": {
-    "zod": {
-      "optional": true
-    }
+  "dependencies": {
+    "zod": "^4.3.6"
   },
   "lint-staged": {
     "*.ts": [
@@ -58,7 +53,6 @@
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.0",
-    "vitest": "^4.0.16",
-    "zod": "^3.25.64"
+    "vitest": "^4.0.16"
   }
 }

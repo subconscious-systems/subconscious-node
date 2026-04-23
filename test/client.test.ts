@@ -38,7 +38,10 @@ describe('Subconscious.run', () => {
     expect(calls[0]!.url).toMatch(/\/v1\/runs$/);
 
     const sentBody = JSON.parse(calls[0]!.init.body as string);
-    expect(sentBody).toEqual({ engine: 'tim', input: { instructions: 'hi' } });
+    expect(sentBody).toEqual({
+      engine: 'tim',
+      input: { instructions: 'hi', tools: [] },
+    });
   });
 
   it('includes skills on input.skills in the POST body', async () => {
@@ -81,7 +84,7 @@ describe('Subconscious.run', () => {
     const sent = JSON.parse(firstCall.init.body as string);
     expect(sent).toEqual({
       engine: 'tim',
-      input: { instructions: 'hi' },
+      input: { instructions: 'hi', tools: [] },
       options: { timeout: 60, max_step_tokens: 1000 },
       output: { callbackUrl: 'https://x.com/hook', responseContent: 'answer_only' },
     });

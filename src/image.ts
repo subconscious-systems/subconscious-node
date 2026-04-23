@@ -19,7 +19,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import type { ImageContent } from './types/content.js';
+import type { ImageContent } from './types.js';
 
 const MIME_ALLOWED = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 
@@ -76,10 +76,6 @@ function toBase64(data: Uint8Array): string {
   return Buffer.from(data).toString('base64');
 }
 
-/**
- * Static factory for ImageContent blocks. Use the constructor that matches
- * the bytes you have in hand.
- */
 export const Image = {
   /** Read an image file from disk and emit an ImageContent(base64) block. */
   fromPath(path: string): ImageContent {
@@ -105,12 +101,9 @@ export const Image = {
   },
 
   /**
-   * Reference a remote image by URL.
-   *
-   * `fetch: false` (default) sends the URL through to the server, which
-   * forwards it to the vendor when supported. `fetch: true` downloads the
-   * bytes client-side and embeds them as base64 — useful when the vendor
-   * doesn't fetch URLs (e.g. some Claude paths).
+   * Reference a remote image by URL. `fetch: false` (default) sends the URL
+   * through to the server. `fetch: true` downloads the bytes client-side and
+   * embeds them as base64.
    */
   async fromUrl(url: string, opts: { fetch?: boolean } = {}): Promise<ImageContent> {
     if (opts.fetch) {

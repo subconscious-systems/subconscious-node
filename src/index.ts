@@ -4,57 +4,118 @@ export { Subconscious, type SubconsciousOptions } from './client.js';
 // Multimodal content helper
 export { Image } from './image.js';
 
-// Types - Run
-export type {
-  Run,
-  RunStatus,
-  RunResult,
-  RunInput,
-  RunOptions,
-  RunOutput,
-  RunParams,
-  RunError,
-  ReasoningTask,
-  AgentToolUse,
-  Usage,
-  Engine,
-} from './types/run.js';
+// Stream
+export type { RunStream, StreamOptions } from './stream.js';
 
-// Types - Tools
-export type { Tool, PlatformTool, FunctionTool, MCPTool, McpAuth } from './types/tool.js';
+// All types and Zod schemas
+export {
+  // Engine + status
+  EngineSchema,
+  KNOWN_ENGINES,
+  RunStatusSchema,
+  type Engine,
+  type RunStatus,
 
-// Types - Multimodal content
-export type {
-  ContentBlock,
-  TextContent,
-  ImageContent,
-  AudioContent,
-  FileContent,
-  Source,
-  SourceBase64,
-  SourceBlobRef,
-  SourceUrl,
-  ToolResponse,
-} from './types/content.js';
+  // Structured output
+  JSONSchemaStringSchema,
+  JSONSchemaNumberSchema,
+  JSONSchemaBooleanSchema,
+  JSONSchemaEnumSchema,
+  type OutputSchema,
+  type JSONSchemaProperty,
+  type JSONSchemaString,
+  type JSONSchemaNumber,
+  type JSONSchemaBoolean,
+  type JSONSchemaArray,
+  type JSONSchemaObject,
+  type JSONSchemaEnum,
+  type JSONSchemaAnyOf,
 
-// Schema types and utilities
-export { zodToJsonSchema } from './types/schema.js';
-export type {
-  OutputSchema,
-  JSONSchemaProperty,
-  JSONSchemaString,
-  JSONSchemaNumber,
-  JSONSchemaBoolean,
-  JSONSchemaArray,
-  JSONSchemaObject,
-  JSONSchemaEnum,
-  JSONSchemaAnyOf,
-} from './types/schema.js';
+  // Run response types
+  AgentToolUseSchema,
+  ReasoningTaskSchema,
+  RunResultSchema,
+  UsageSchema,
+  RunErrorSchema,
+  RunSchema,
+  type AgentToolUse,
+  type ReasoningTask,
+  type RunResult,
+  type Usage,
+  type RunError,
+  type Run,
 
-// Types - Stream Events
-export type { StreamEvent, DeltaEvent, DoneEvent, ErrorEvent } from './types/events.js';
+  // Tool types
+  PlatformToolSchema,
+  FunctionToolSchema,
+  McpAuthSchema,
+  MCPToolSchema,
+  ToolSchema,
+  type PlatformTool,
+  type FunctionTool,
+  type McpAuth,
+  type MCPTool,
+  type Tool,
 
-// Types - Errors
+  // Content types
+  SourceBase64Schema,
+  SourceBlobRefSchema,
+  SourceUrlSchema,
+  SourceSchema,
+  TextContentSchema,
+  ImageContentSchema,
+  AudioContentSchema,
+  FileContentSchema,
+  ContentBlockSchema,
+  type SourceBase64,
+  type SourceBlobRef,
+  type SourceUrl,
+  type Source,
+  type TextContent,
+  type ImageContent,
+  type AudioContent,
+  type FileContent,
+  type ContentBlock,
+
+  // Tool response envelope (schema + type)
+  ToolResponseSchema,
+  type ToolResponse,
+
+  // User input types
+  type RunInput,
+  type RunOutput,
+  type RunOptions,
+  type RunParams,
+  type PollOptions,
+
+  // Stream events
+  DeltaEventSchema,
+  DoneEventSchema,
+  ErrorEventSchema,
+  StreamEventSchema,
+  type DeltaEvent,
+  type DoneEvent,
+  type ErrorEvent,
+  type StreamEvent,
+} from './types.js';
+
+// Helpers — functions, wire schemas, body builders, ToolResponseBuilder
+export {
+  zodToOutputSchema,
+  zodToJsonSchema,
+  ToolResponseBuilder,
+  type ToolResponseContent,
+  CreateRunBodySchema,
+  buildCreateRunBody,
+  toWireBody,
+  buildRunBody,
+  type CreateRunBody,
+  type RunInputWire,
+  type RunOptionsWire,
+  type RunOutputWire,
+} from './helpers.js';
+
+// Errors
 export {
   SubconsciousError,
   AuthenticationError,
@@ -62,12 +123,7 @@ export {
   NotFoundError,
   ValidationError,
   RequestTooLargeError,
+  ResponseValidationError,
   type ErrorCode,
   type APIErrorResponse,
-} from './types/error.js';
-
-// Stream types
-export type { RunStream, StreamOptions } from './stream.js';
-
-// Polling options
-export type { PollOptions } from './internal/poll.js';
+} from './errors.js';

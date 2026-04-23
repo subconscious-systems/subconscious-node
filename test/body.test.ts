@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildRunBody } from '../src/internal/body.js';
-import type { RunInput, RunOptions } from '../src/types/run.js';
+import { buildRunBody } from '../src/helpers.js';
+import type { RunInput, RunOptions } from '../src/types.js';
 
 const baseInput: RunInput = {
   instructions: 'do the thing',
@@ -13,7 +13,12 @@ function parseBody(engine: string, input: RunInput, options?: RunOptions) {
 describe('buildRunBody', () => {
   it('emits minimal { engine, input } when no options are provided', () => {
     const body = parseBody('tim', baseInput);
-    expect(body).toEqual({ engine: 'tim', input: { instructions: 'do the thing' } });
+    // Mirrors Python CreateRunBody.to_dict() — `tools: []` is always present
+    // in the wire body (RunInputWire tools default is an empty list).
+    expect(body).toEqual({
+      engine: 'tim',
+      input: { instructions: 'do the thing', tools: [] },
+    });
     expect(body).not.toHaveProperty('options');
     expect(body).not.toHaveProperty('output');
   });

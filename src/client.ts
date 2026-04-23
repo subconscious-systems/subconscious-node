@@ -1,11 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { z } from 'zod';
 import { request } from './internal/http.js';
-import { pollUntilComplete, type PollOptions } from './internal/poll.js';
+import { pollUntilComplete } from './internal/poll.js';
 import { createStream, type StreamOptions, type RunStream } from './stream.js';
-import { buildRunBody } from './internal/body.js';
-import type { Run, Engine, RunInput, RunParams } from './types/run.js';
+import { buildRunBody } from './helpers.js';
+import {
+  RunSchema,
+  type Engine,
+  type PollOptions,
+  type Run,
+  type RunInput,
+  type RunParams,
+} from './types.js';
 
 export type SubconsciousOptions = {
   apiKey?: string;
@@ -40,6 +48,9 @@ function resolveApiKey(explicit?: string): string {
   );
 }
 
+/** Response shape of POST /v1/runs — only `runId` is guaranteed. */
+const CreateRunResponseSchema = z.object({ runId: z.string() });
+
 /**
  * The main Subconscious API client.
  *
@@ -50,9 +61,7 @@ function resolveApiKey(explicit?: string): string {
  * ```ts
  * import { Subconscious } from "subconscious";
  *
- * // Key auto-resolved from env or ~/.subcon/config.json
  * const client = new Subconscious();
- *
  * const run = await client.run({
  *   engine: "tim",
  *   input: {
@@ -74,20 +83,9 @@ export class Subconscious {
     this.baseUrl = opts.baseUrl ?? 'https://api.subconscious.dev/v1';
   }
 
-  /**
-   * Create a new run.
-   *
-   * @param params.engine - The engine to use for the run
-   * @param params.input - The input configuration including instructions, tools, skills
-   * @param params.options.awaitCompletion - Client-side only. If true, poll until the run completes.
-   * @param params.options.timeout - Server-side max run duration (1–3600s).
-   * @param params.options.maxStepTokens - Server-side per-step token cap (256–20000).
-   * @param params.options.output - Server-side output delivery (webhook, response shape).
-   * @returns The created run, optionally with results if awaitCompletion is true
-   */
   async run(params: RunParams): Promise<Run> {
     const body = buildRunBody(params.engine, params.input, params.options);
-    const { runId } = await request<{ runId: string }>(`${this.baseUrl}/runs`, {
+    const { runId } = await request(`${this.baseUrl}/runs`, CreateRunResponseSchema, {
       method: 'POST',
       headers: this.authHeaders(),
       body,
@@ -100,49 +98,22 @@ export class Subconscious {
     return this.wait(runId);
   }
 
-  /**
-   * Create a streaming run that yields text deltas as they arrive.
-   *
-   * @example
-   * ```ts
-   * const stream = client.stream({
-   *   engine: "tim",
-   *   input: { instructions: "...", tools: [] },
-   * });
-   *
-   * for await (const event of stream) {
-   *   if (event.type === 'delta') {
-   *     process.stdout.write(event.content);
-   *   }
-   * }
-   * ```
-   */
   stream(params: { engine: Engine; input: RunInput }, options?: StreamOptions): RunStream {
     return createStream(this.baseUrl, this.apiKey, params, options);
   }
 
-  /** Get the current state of a run. */
   async get(runId: string): Promise<Run> {
-    return request<Run>(`${this.baseUrl}/runs/${runId}`, {
+    return request(`${this.baseUrl}/runs/${runId}`, RunSchema, {
       headers: this.authHeaders(),
     });
   }
 
-  /**
-   * Wait for a run to complete by polling.
-   *
-   * @param runId - The ID of the run to wait for
-   * @param options.intervalMs - Polling interval in milliseconds (default: 1000)
-   * @param options.maxAttempts - Maximum polling attempts before throwing
-   * @param options.signal - AbortSignal to cancel polling
-   */
   async wait(runId: string, options?: PollOptions): Promise<Run> {
     return pollUntilComplete(`${this.baseUrl}/runs/${runId}`, this.authHeaders(), options);
   }
 
-  /** Cancel a running run. */
   async cancel(runId: string): Promise<Run> {
-    return request<Run>(`${this.baseUrl}/runs/${runId}/cancel`, {
+    return request(`${this.baseUrl}/runs/${runId}/cancel`, RunSchema, {
       method: 'POST',
       headers: this.authHeaders(),
     });

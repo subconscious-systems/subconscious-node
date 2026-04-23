@@ -1,3 +1,5 @@
+import type { ZodError } from 'zod';
+
 export type ErrorCode =
   | 'invalid_request'
   | 'authentication_failed'
@@ -58,10 +60,23 @@ export class ValidationError extends SubconsciousError {
   }
 }
 
-/** Raised when the serialized run request exceeds the API size limit. */
 export class RequestTooLargeError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'RequestTooLargeError';
+  }
+}
+
+/**
+ * Raised when an API response fails schema validation. Wraps the underlying
+ * ZodError so callers can introspect which fields failed if they need to.
+ */
+export class ResponseValidationError extends Error {
+  readonly zodError: ZodError;
+
+  constructor(message: string, zodError: ZodError) {
+    super(message);
+    this.name = 'ResponseValidationError';
+    this.zodError = zodError;
   }
 }

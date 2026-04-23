@@ -1,12 +1,14 @@
+import type { z, ZodError } from 'zod';
 import {
   SubconsciousError,
   AuthenticationError,
   RateLimitError,
   NotFoundError,
   ValidationError,
+  ResponseValidationError,
   type APIErrorResponse,
   type ErrorCode,
-} from '../types/error.js';
+} from '../errors.js';
 
 export type RequestOptions = RequestInit & {
   signal?: AbortSignal;
@@ -71,7 +73,28 @@ function mapStatusToCode(status: number): ErrorCode {
   }
 }
 
-export async function request<T>(url: string, opts: RequestOptions = {}): Promise<T> {
+/**
+ * Run a parsed JSON body through a Zod schema. Mirrors Python's
+ * `Run.model_validate()` — unknown keys are silently dropped (Zod object
+ * default), missing/mismatched fields raise {@link ResponseValidationError}.
+ */
+export function validateResponse<T>(schema: z.ZodType<T>, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    throw new ResponseValidationError(
+      `Response did not match expected schema: ${result.error.message}`,
+      result.error as ZodError,
+    );
+  }
+  return result.data;
+}
+
+/** Issue a JSON request and validate the response body against `schema`. */
+export async function request<T>(
+  url: string,
+  schema: z.ZodType<T>,
+  opts: RequestOptions = {},
+): Promise<T> {
   const res = await fetch(url, {
     ...opts,
     headers: {
@@ -84,7 +107,8 @@ export async function request<T>(url: string, opts: RequestOptions = {}): Promis
     throw await parseErrorResponse(res);
   }
 
-  return res.json() as Promise<T>;
+  const data = (await res.json()) as unknown;
+  return validateResponse(schema, data);
 }
 
 export async function requestStream(url: string, opts: RequestOptions = {}): Promise<Response> {
