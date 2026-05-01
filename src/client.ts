@@ -9,7 +9,7 @@ import {
 } from './stream.js';
 import { coerceAnswerFormat } from './types/schema.js';
 import type { OutputSchema } from './types/schema.js';
-import type { Engine, Run, RunInput, RunParams } from './types/run.js';
+import type { Engine, Run, RunInput, RunOptions, RunParams } from './types/run.js';
 
 export type SubconsciousOptions = {
   apiKey: string;
@@ -44,7 +44,25 @@ export type GenericRunParams = Omit<RunParams, 'input'> & {
     /** JSON Schema or Zod schema (R13). */
     reasoningFormat?: OutputSchema | unknown;
   };
+  /**
+   * @deprecated Use `client.runAndWait()` instead of `options.awaitCompletion`.
+   *   Passing `options.awaitCompletion: true` to `client.run()` transparently
+   *   routes through `runAndWait()` and emits a one-shot console warning.
+   */
+  options?: RunOptions;
 };
+
+let awaitCompletionWarningShown = false;
+function warnAwaitCompletionDeprecated() {
+  if (awaitCompletionWarningShown) return;
+  awaitCompletionWarningShown = true;
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[subconscious] `options.awaitCompletion` is deprecated. ' +
+      'Call `client.runAndWait(...)` instead of `client.run({ ..., options: { awaitCompletion: true } })`. ' +
+      'The legacy field will be removed in a future minor release.',
+  );
+}
 
 /**
  * The main Subconscious API client.
@@ -100,16 +118,19 @@ export class Subconscious {
    * Use `client.runAndWait()` if you want to block until the run reaches
    * a terminal state. (R18.)
    *
-   * @returns The created run, with only `runId` populated.
+   * Back-compat: if `params.options?.awaitCompletion === true`, this method
+   * transparently routes through `runAndWait()` and emits a one-shot
+   * deprecation warning. New code should call `runAndWait()` directly.
+   *
+   * @returns The created run, with only `runId` populated (or a fully
+   *   resolved run when the deprecated `awaitCompletion` is true).
    */
   async run<T = unknown>(params: GenericRunParams): Promise<Run<T>> {
-    const body = this.buildCreateBody(params);
-    const { runId } = await request<{ runId: string }>(`${this.baseUrl}/runs`, {
-      method: 'POST',
-      headers: this.authHeaders(),
-      body: JSON.stringify(body),
-    });
-    return { runId } as Run<T>;
+    if (params.options?.awaitCompletion) {
+      warnAwaitCompletionDeprecated();
+      return this.runAndWait<T>(params);
+    }
+    return this.createRunOnly<T>(params);
   }
 
   /**
@@ -125,8 +146,27 @@ export class Subconscious {
     params: GenericRunParams,
     pollOptions?: PollOptions,
   ): Promise<Run<T>> {
-    const { runId } = await this.run<T>(params);
+    // Use `createRunOnly` (the bare POST) instead of `run()` to avoid
+    // ping-ponging on the deprecated `options.awaitCompletion` back-compat
+    // path: `run({ options: { awaitCompletion: true } })` calls
+    // `runAndWait`, which would then call `run` again and recurse forever.
+    const { runId } = await this.createRunOnly<T>(params);
     return this.wait<T>(runId, pollOptions);
+  }
+
+  /**
+   * The bare "POST /runs and return the runId" path. Internal — public
+   * callers should reach for `run()` (fire-and-forget) or `runAndWait()`
+   * (polling).
+   */
+  private async createRunOnly<T = unknown>(params: GenericRunParams): Promise<Run<T>> {
+    const body = this.buildCreateBody(params);
+    const { runId } = await request<{ runId: string }>(`${this.baseUrl}/runs`, {
+      method: 'POST',
+      headers: this.authHeaders(),
+      body: JSON.stringify(body),
+    });
+    return { runId } as Run<T>;
   }
 
   /**

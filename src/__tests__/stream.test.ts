@@ -31,9 +31,10 @@ async function collect<T>(stream: AsyncGenerator<T>): Promise<T[]> {
 
 describe('client.stream — Stream Events v2 (R8, R15)', () => {
   it('emits StartedEvent first using the x-run-id header before any server frame', async () => {
+    // Canonical wire shape uses camelCase `runId` (matches REST responses).
     const fetchMock = mockFetchSSE(
       [
-        'event: meta\ndata: {"run_id":"run_abc"}\n\n',
+        'event: meta\ndata: {"runId":"run_abc"}\n\n',
         'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n',
         'event: result\ndata: {"result":{"answer":"hi","reasoning":null}}\n\n',
         'data: [DONE]\n\n',
@@ -107,6 +108,48 @@ describe('client.stream — Stream Events v2 (R8, R15)', () => {
     const toolCall = events.find((e) => e.type === 'tool_call');
     if (toolCall?.type !== 'tool_call') throw new Error('expected tool_call');
     expect(toolCall.call.tool_name).toBe('web_search');
+  });
+
+  it('back-compat: legacy run_id (snake_case) on the wire still parses', async () => {
+    // Older API builds emitted snake_case `run_id`. SDKs MUST keep
+    // accepting the legacy shape for at least one minor release.
+    const fetchMock = mockFetchSSE(
+      [
+        'event: started\ndata: {"run_id":"r_legacy"}\n\n',
+        'event: result\ndata: {"result":{"answer":"ok","reasoning":null}}\n\n',
+        'data: [DONE]\n\n',
+      ],
+      'r_legacy',
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new Subconscious({ apiKey: 'k' });
+    const events = (await collect(
+      client.stream({ engine: 'tim-claude', input: { instructions: 'hi' } }),
+    )) as StreamEvent[];
+    vi.unstubAllGlobals();
+
+    expect(events[0]).toEqual({ type: 'started', runId: 'r_legacy' });
+  });
+
+  it('parses event: error with code "canceled" (one l)', async () => {
+    const fetchMock = mockFetchSSE(
+      [
+        'event: started\ndata: {"runId":"r1"}\n\n',
+        'event: error\ndata: {"code":"canceled","message":"The run was canceled"}\n\n',
+        'data: [DONE]\n\n',
+      ],
+      'r1',
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new Subconscious({ apiKey: 'k' });
+    const events = (await collect(
+      client.stream({ engine: 'tim-claude', input: { instructions: 'hi' } }),
+    )) as StreamEvent[];
+    vi.unstubAllGlobals();
+
+    const err = events.find((e) => e.type === 'error');
+    if (err?.type !== 'error') throw new Error('expected error');
+    expect(err.code).toBe('canceled');
   });
 
   it('parses event: error with required code (R5)', async () => {

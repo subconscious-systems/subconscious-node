@@ -245,7 +245,7 @@ type ErrorCode =
   | 'internal_error'
   | 'service_unavailable'
   | 'timeout'
-  | 'cancelled';
+  | 'canceled';
 ```
 
 Pattern-match on `code`, never on `message.includes(...)`.
@@ -260,6 +260,46 @@ The SDK accepts any engine name as a string; canonical live names are:
 
 Legacy names (`tim-large`, `tim-gpt`, `tim-small`, `timini`, …) are still
 accepted and resolved to a live engine server-side.
+
+## Back-compat & deprecations
+
+The SDK keeps a thin compatibility shim for callers from before the
+run/runAndWait split and the wire-format normalization. Existing code
+keeps working without changes; new code should reach for the new
+spellings:
+
+### `options.awaitCompletion` — deprecated
+
+The single-method `client.run({ ..., options: { awaitCompletion: true } })`
+shape from older releases is still accepted. It transparently routes
+through `client.runAndWait()` and emits a one-shot `console.warn` so the
+deprecation is visible in dev. Migrate by calling `runAndWait()` directly:
+
+```ts
+// Before (still works, prints a deprecation warning once):
+const run = await client.run({
+  engine: 'tim-claude',
+  input,
+  options: { awaitCompletion: true },
+});
+
+// After:
+const run = await client.runAndWait({ engine: 'tim-claude', input });
+```
+
+`RunOptions` will be removed in a future minor release.
+
+### Wire-format `runId`
+
+The canonical SSE event payload key is `runId` (camelCase, matching REST
+responses). The SDK also accepts the legacy snake_case `run_id` shape so
+callers running against older API builds keep working — but emitters
+inside this codebase should always write `runId`.
+
+### Error code spelling: `canceled` (one `l`)
+
+`ErrorCode` and `RunStatus` both use `canceled` (one `l`). The earlier
+double-`l` `cancelled` form was removed.
 
 ## License
 

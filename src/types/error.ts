@@ -7,7 +7,7 @@ export type ErrorCode =
   | 'internal_error'
   | 'service_unavailable'
   | 'timeout'
-  | 'cancelled';
+  | 'canceled';
 
 export type APIErrorResponse = {
   error: {

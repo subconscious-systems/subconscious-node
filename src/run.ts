@@ -5,6 +5,7 @@ export type {
   RunResult,
   RunInput,
   RunParams,
+  RunOptions,
   ReasoningNode,
   ToolUse,
   Engine,

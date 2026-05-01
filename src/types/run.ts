@@ -123,7 +123,28 @@ export type RunInput = {
   reasoningFormat?: import('./schema.js').OutputSchema;
 };
 
+/**
+ * **Deprecated.** Pre-split `client.run()` accepted `options.awaitCompletion`
+ * to choose between fire-and-forget and polling-until-complete. The same
+ * thing is now expressed by calling `client.run()` (fire-and-forget) or
+ * `client.runAndWait()` (polls until terminal). Existing call sites
+ * continue to work — passing `options.awaitCompletion: true` to
+ * `client.run()` transparently routes through `runAndWait()` and emits a
+ * one-shot console deprecation warning so the change is noisy in dev.
+ *
+ * @deprecated Use `client.runAndWait()` instead of `options.awaitCompletion`.
+ *   This shape will be removed in a future minor release.
+ */
+export type RunOptions = {
+  /** @deprecated Use `client.runAndWait()` instead. */
+  awaitCompletion?: boolean;
+};
+
 export type RunParams = {
   engine: Engine;
   input: RunInput;
+  /**
+   * @deprecated Use `client.runAndWait()` instead of `options.awaitCompletion`.
+   */
+  options?: RunOptions;
 };

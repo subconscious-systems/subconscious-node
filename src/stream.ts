@@ -89,7 +89,10 @@ async function* parseSSEStream<T>(
           case 'started':
           case 'meta': {
             // Both shapes carry the runId. We always emit `started` once.
-            const id = payload.run_id ?? payload.runId;
+            // Canonical wire key is `runId` (camelCase). The legacy
+            // `run_id` snake_case form is accepted for one minor release
+            // of back-compat with older API builds.
+            const id = payload.runId ?? payload.run_id;
             if (typeof id === 'string' && id.length > 0) {
               if (runId !== id) {
                 runId = id;

@@ -124,6 +124,65 @@ describe('client constructor — defaults (R9)', () => {
   });
 });
 
+describe('client.run — back-compat: options.awaitCompletion (deprecated)', () => {
+  it('routes through runAndWait and emits a one-shot deprecation warning', async () => {
+    let pollCount = 0;
+    const fetchMock = mockFetchJSON({
+      '/runs': () => ({ runId: 'run_legacy' }),
+      '/runs/run_legacy': () => {
+        pollCount++;
+        return {
+          runId: 'run_legacy',
+          status: 'succeeded',
+          result: { answer: 'ok', reasoning: null },
+        };
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const client = new Subconscious({ apiKey: 'k' });
+    // The mock returns `succeeded` on the first poll so we never hit the
+    // 1000ms sleep — no need to override pollOptions in the test.
+    const run = await client.run({
+      engine: 'tim-claude',
+      input: { instructions: 'hi' },
+      options: { awaitCompletion: true },
+    });
+    vi.unstubAllGlobals();
+
+    expect(run.status).toBe('succeeded');
+    expect(run.result?.answer).toBe('ok');
+    expect(pollCount).toBeGreaterThanOrEqual(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toMatch(/options\.awaitCompletion/);
+    warn.mockRestore();
+  });
+
+  it('without options.awaitCompletion still fire-and-forgets', async () => {
+    let polled = false;
+    const fetchMock = mockFetchJSON({
+      '/runs': () => ({ runId: 'r' }),
+      '/runs/r': () => {
+        polled = true;
+        return { runId: 'r', status: 'succeeded', result: { answer: '', reasoning: null } };
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new Subconscious({ apiKey: 'k' });
+    const run = await client.run({
+      engine: 'tim-claude',
+      input: { instructions: 'hi' },
+      options: {},
+    });
+    vi.unstubAllGlobals();
+
+    expect(run).toEqual({ runId: 'r' });
+    expect(polled).toBe(false);
+  });
+});
+
 describe('client.run — R13 accepts Zod directly for answerFormat', () => {
   it('coerces a Zod schema before sending', async () => {
     let captured: any;
