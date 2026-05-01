@@ -28,335 +28,239 @@ npm install subconscious
 yarn add subconscious
 ```
 
-## Quick Start
+## Quick start
 
-```typescript
-import { Subconscious } from 'subconscious';
-
-const client = new Subconscious({
-  apiKey: process.env.SUBCONSCIOUS_API_KEY!,
-});
-
-const run = await client.run({
-  engine: 'tim-large',
-  input: {
-    instructions: 'Search for the latest AI news and summarize the top 3 stories',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
-  },
-  options: { awaitCompletion: true },
-});
-
-console.log(run.result?.answer);
-```
-
-## Get Your API Key
-
-Create an API key in the [Subconscious dashboard](https://www.subconscious.dev/platform).
-
-## Usage
-
-### Run and Wait
-
-The simplest way to use the SDK—create a run and wait for completion:
-
-```typescript
-const run = await client.run({
-  engine: 'tim-large',
-  input: {
-    instructions: 'Analyze the latest trends in renewable energy',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
-  },
-  options: { awaitCompletion: true },
-});
-
-console.log(run.result?.answer);
-console.log(run.result?.reasoning); // Structured reasoning nodes
-```
-
-### Fire and Forget
-
-Start a run without waiting, then check status later:
-
-```typescript
-const run = await client.run({
-  engine: 'tim-large',
-  input: {
-    instructions: 'Generate a comprehensive report',
-    tools: [],
-  },
-});
-
-console.log(`Run started: ${run.runId}`);
-
-// Check status later
-const status = await client.get(run.runId);
-console.log(status.status); // 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'timed_out'
-```
-
-### Poll with Custom Options
-
-```typescript
-const run = await client.run({
-  engine: 'tim-large',
-  input: {
-    instructions: 'Complex task',
-    tools: [{ type: 'platform', id: 'parallel_search' }],
-  },
-});
-
-// Wait with custom polling options
-const result = await client.wait(run.runId, {
-  intervalMs: 2000,  // Poll every 2 seconds
-  maxAttempts: 60,   // Give up after 60 attempts
-});
-```
-
-### Streaming (Text Deltas)
-
-Stream text as it's generated:
-
-```typescript
-const stream = client.stream({
-  engine: 'tim-large',
-  input: {
-    instructions: 'Write a short essay about space exploration',
-    tools: [{ type: 'platform', id: 'parallel_search' }],
-  },
-});
-
-for await (const event of stream) {
-  if (event.type === 'delta') {
-    process.stdout.write(event.content);
-  } else if (event.type === 'done') {
-    console.log('\n\nRun completed:', event.runId);
-  } else if (event.type === 'error') {
-    console.error('Error:', event.message);
-  }
-}
-```
-
-> **Note**: Rich streaming events (reasoning steps, tool calls) are coming soon. Currently, the stream provides text deltas as they're generated.
-
-### Tools
-
-```typescript
-// Platform tools (hosted by Subconscious)
-const parallelSearch = {
-  type: 'platform',
-  id: 'parallel_search',
-  options: {},
-};
-
-// Function tools (your own functions)
-const customFunction = {
-  type: 'function',
-  function: {
-    name: 'get_weather',
-    description: 'Get current weather for a location',
-    parameters: {
-      type: 'object',
-      properties: {
-        location: { type: 'string' },
-      },
-      required: ['location'],
-    },
-    url: 'https://api.example.com/weather',
-    method: 'GET',
-    timeout: 30,
-  },
-};
-
-// MCP tools
-const mcpTool = {
-  type: 'mcp',
-  url: 'https://mcp.example.com',
-  allow: ['read', 'write'],
-};
-```
-
-### Structured Output
-
-Get structured responses using JSON Schema. We recommend using [Zod](https://zod.dev) to define your schema, then convert it with `zodToJsonSchema()`:
-
-```typescript
+```ts
+import { Subconscious, tools } from 'subconscious';
 import { z } from 'zod';
-import { Subconscious, zodToJsonSchema } from 'subconscious';
 
 const client = new Subconscious({ apiKey: process.env.SUBCONSCIOUS_API_KEY! });
 
-// Define your output schema with Zod
-const AnalysisSchema = z.object({
-  summary: z.string().describe('A brief summary of the findings'),
-  keyPoints: z.array(z.string()).describe('Main takeaways'),
-  sentiment: z.enum(['positive', 'neutral', 'negative']),
-  confidence: z.number().describe('Confidence score from 0 to 1'),
+const Summary = z.object({
+  summary: z.string(),
+  score: z.number(),
 });
 
-const run = await client.run({
-  engine: 'tim-large',
+// Block until done — type-narrowed by the answerFormat schema:
+const run = await client.runAndWait<{ summary: string; score: number }>({
+  engine: 'tim-claude',
   input: {
-    instructions: 'Analyze the latest news about electric vehicles',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
-    answerFormat: zodToJsonSchema(AnalysisSchema, 'Analysis'),
+    instructions: 'Summarize and score this article: …',
+    tools: [tools.platform('parallel_search')],
+    answerFormat: Summary, // pass Zod directly
   },
-  options: { awaitCompletion: true },
 });
 
-// Result is typed according to your schema
-const result = run.result?.answer as z.infer<typeof AnalysisSchema>;
-console.log(result.summary);
-console.log(result.keyPoints);
+console.log(run.result?.answer.summary); // string, typed
+console.log(run.result?.answer.score);   // number, typed
 ```
 
-You can also define a `reasoningFormat` to structure the agent's reasoning:
+## Three ways to start a run
 
-```typescript
-const ReasoningSchema = z.object({
-  steps: z.array(z.object({
-    thought: z.string(),
-    action: z.string(),
-  })),
-  conclusion: z.string(),
+### 1. Fire-and-forget — `client.run`
+
+Returns the `runId` immediately. Use this when a background process polls or
+when you've persisted the run id and will pick it up later.
+
+```ts
+const { runId } = await client.run({
+  engine: 'tim-claude',
+  input: { instructions: 'Search AI news' },
 });
 
-const run = await client.run({
-  engine: 'tim-large',
-  input: {
-    instructions: 'Research and explain quantum computing',
-    tools: [{ type: 'platform', id: 'parallel_search', options: {} }],
-    answerFormat: zodToJsonSchema(AnalysisSchema, 'Analysis'),
-    reasoningFormat: zodToJsonSchema(ReasoningSchema, 'Reasoning'),
-  },
-  options: { awaitCompletion: true },
-});
+await db.insert({ runId, status: 'queued' });
 ```
 
-#### Manual JSON Schema
+### 2. Block until done — `client.runAndWait`
 
-You can also provide the JSON Schema directly without Zod:
+Creates the run and polls until it reaches a terminal state.
 
-```typescript
-const run = await client.run({
-  engine: 'tim-large',
-  input: {
-    instructions: 'Analyze this topic',
-    tools: [],
-    answerFormat: {
-      title: 'Analysis',
-      type: 'object',
-      properties: {
-        summary: { type: 'string', description: 'Brief summary' },
-        score: { type: 'number', description: 'Score from 1-10' },
-      },
-      required: ['summary', 'score'],
-    },
-  },
-  options: { awaitCompletion: true },
+```ts
+const run = await client.runAndWait({
+  engine: 'tim-claude',
+  input: { instructions: 'Search AI news' },
 });
+
+console.log(run.result?.answer);
 ```
 
-### Error Handling
+### 3. Stream — `client.stream`
 
-```typescript
-import { SubconsciousError, AuthenticationError, RateLimitError } from 'subconscious';
+Returns an async iterable of typed events. The first event is always
+`started` (carrying `runId`); the last is always `done`. Exactly one
+`result` (success) or `error` (failure) event fires before `done`.
 
-try {
-  const run = await client.run({ /* ... */ });
-} catch (error) {
-  if (error instanceof AuthenticationError) {
-    console.error('Invalid API key');
-  } else if (error instanceof RateLimitError) {
-    console.error('Rate limited, retry later');
-  } else if (error instanceof SubconsciousError) {
-    console.error(`API error: ${error.code} - ${error.message}`);
+```ts
+for await (const event of client.stream({
+  engine: 'tim-claude',
+  input: { instructions: 'Write an essay about ravens' },
+})) {
+  switch (event.type) {
+    case 'started':
+      console.log('runId:', event.runId);
+      break;
+    case 'delta':
+      process.stdout.write(event.content);
+      break;
+    case 'reasoning_node':
+      console.log('\nstep:', event.node.title);
+      break;
+    case 'tool_call':
+      console.log('tool:', event.call.tool_name, event.call.parameters);
+      break;
+    case 'result':
+      console.log('\nfinal answer:', event.result.answer);
+      break;
+    case 'error':
+      console.error(`[${event.code}] ${event.message}`);
+      break;
   }
 }
 ```
 
-### Cancellation
+## Re-attaching to a run — `client.observe`
 
-```typescript
-// Cancel via AbortController
-const controller = new AbortController();
-const stream = client.stream(params, { signal: controller.signal });
-setTimeout(() => controller.abort(), 30000);
+Pick up a live or already-finished run and stream its events from the
+durable buffer. Same wire format as `stream()`. Useful when a worker
+restarts.
 
-// Or cancel a running run
-await client.cancel(run.runId);
+```ts
+const { runId } = await client.run({ engine: 'tim-claude', input });
+await db.persist(runId);
+
+// … later, possibly in a different process:
+for await (const event of client.observe(runId)) {
+  if (event.type === 'result') console.log(event.result.answer);
+}
 ```
 
-## API Reference
+## Tools
 
-### `Subconscious`
+Use the `tools` builder to construct tool blocks without juggling the
+discriminated union by hand:
 
-The main client class.
+```ts
+import { tools } from 'subconscious';
+import { z } from 'zod';
 
-#### Constructor Options
+const input = {
+  instructions: 'Look up customers and send a follow-up email',
+  tools: [
+    // Hosted platform tools (search, summarize, etc.)
+    tools.platform('parallel_search'),
 
-| Option    | Type     | Required | Default                           |
-| --------- | -------- | -------- | --------------------------------- |
-| `apiKey`  | `string` | Yes      | -                                 |
-| `baseUrl` | `string` | No       | `https://api.subconscious.dev/v1` |
+    // Hosted runtime resources — sandbox / memory / browser
+    tools.resource('sandbox'),
 
-#### Methods
+    // Function tools the engine dispatches via HTTP POST
+    tools.function({
+      name: 'sendEmail',
+      url: 'https://api.example.com/email',
+      parameters: z.object({
+        to: z.string(),
+        body: z.string(),
+      }),
+      // Hidden values merged into the dispatched body. The model never
+      // sees these and the SDK auto-promotes them into `parameters` so
+      // the engine has a complete schema:
+      defaults: { sender_id: 'svc_abc' },
+      headers: { Authorization: 'Bearer xyz' },
+    }),
 
-| Method                     | Description              |
-| -------------------------- | ------------------------ |
-| `run(params)`              | Create a new run         |
-| `stream(params, options?)` | Stream text deltas       |
-| `get(runId)`               | Get run status           |
-| `wait(runId, options?)`    | Poll until completion    |
-| `cancel(runId)`            | Cancel a running run     |
+    // MCP servers — supports header-based auth (no URL placeholder hacks)
+    tools.mcp({
+      url: 'https://mcp.example.com',
+      headers: { Authorization: 'Bearer xyz' },
+    }),
+  ],
+};
+```
 
-### `zodToJsonSchema(schema, title)`
+### Client-level FunctionTool overlays
 
-Convert a Zod schema to the JSON Schema format expected by `answerFormat` and `reasoningFormat`.
+Avoid duplicating shared auth on every function tool:
 
-| Param    | Type         | Description                        |
-| -------- | ------------ | ---------------------------------- |
-| `schema` | Zod object   | A Zod object schema (`z.object()`) |
-| `title`  | `string`     | Title for the schema               |
+```ts
+const client = new Subconscious({
+  apiKey: process.env.SUBCONSCIOUS_API_KEY!,
+  defaultFunctionToolHeaders: { Authorization: 'Bearer xyz' },
+  defaultFunctionToolDefaults: { tenant_id: 't_abc' },
+});
+```
 
-Returns an `OutputSchema` compatible with `answerFormat` and `reasoningFormat`.
+Per-tool values win on conflict.
 
-### Engines
+## Structured output
 
-| Engine              | Type     | Availability | Description                                                       |
-| ------------------- | -------- | ------------ | ----------------------------------------------------------------- |
-| `tim-small-preview` | Unified  | Available    | Fast and tuned for search tasks                                   |
-| `tim-large`         | Compound | Available    | Generalized reasoning engine backed by the power of OpenAI        |
-| `timini`            | Compound | Coming soon  | Generalized reasoning engine backed by the power of Google Gemini |
+Pass a Zod schema directly — the SDK converts it for you:
 
-### Run Status
+```ts
+import { z } from 'zod';
 
-| Status      | Description            |
-| ----------- | ---------------------- |
-| `queued`    | Waiting to start       |
-| `running`   | Currently executing    |
-| `succeeded` | Completed successfully |
-| `failed`    | Encountered an error   |
-| `canceled`  | Manually canceled      |
-| `timed_out` | Exceeded time limit    |
+const Result = z.object({
+  summary: z.string(),
+  score: z.number(),
+});
 
-## Requirements
+const run = await client.runAndWait<{ summary: string; score: number }>({
+  engine: 'tim-claude',
+  input: {
+    instructions: 'Rate this article…',
+    answerFormat: Result,
+  },
+});
 
-- Node.js ≥ 18
-- ESM only
+run.result?.answer.summary; //   string, typed
+```
 
-## Contributing
+You can still pass a hand-built JSON Schema if you'd rather not depend
+on Zod. `zodToJsonSchema()` is exported but seldom needed.
 
-Contributions are welcome! Please feel free to submit a pull request.
+## Cancelling a run
+
+`client.cancel(runId)` is **idempotent**. You can call it whether the run
+is running, queued, or already terminal — it returns the run's current
+shape with a 200. Errors are only thrown for network / auth failures, so
+you don't need a `.catch(() => undefined)` wrap for the common case.
+
+```ts
+const { runId } = await client.run({ engine, input });
+// safe to call regardless of state:
+await client.cancel(runId);
+await client.cancel(runId); // also safe
+```
+
+## Error codes (R5)
+
+Every `error` stream event and every thrown `SubconsciousError` carries a
+canonical `code` from the `ErrorCode` enum:
+
+```ts
+type ErrorCode =
+  | 'invalid_request'
+  | 'authentication_failed'
+  | 'permission_denied'
+  | 'not_found'
+  | 'rate_limited'
+  | 'internal_error'
+  | 'service_unavailable'
+  | 'timeout'
+  | 'cancelled';
+```
+
+Pattern-match on `code`, never on `message.includes(...)`.
+
+## Engines
+
+The SDK accepts any engine name as a string; canonical live names are:
+
+- `tim`, `tim-edge`
+- `tim-claude`, `tim-claude-heavy`
+- `tim-omni`, `tim-omni-mini`
+
+Legacy names (`tim-large`, `tim-gpt`, `tim-small`, `timini`, …) are still
+accepted and resolved to a live engine server-side.
 
 ## License
 
-Apache-2.0
-
-## Support
-
-For support and questions:
-- Documentation: https://docs.subconscious.dev
-- Email: {hongyin,jack}@subconscious.dev
-
-## License
-
-Apache-2.0
+Apache-2.0. See `LICENSE`.

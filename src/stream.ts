@@ -1,25 +1,178 @@
 import { requestStream } from './internal/http.js';
-import type { StreamEvent } from './types/events.js';
-import type { RunInput, Engine, Run } from './types/run.js';
+import type { ErrorCode } from './types/error.js';
+import type {
+  ErrorEvent,
+  ReasoningNodeEvent,
+  ResultEvent,
+  StartedEvent,
+  StreamEvent,
+  ToolCallEvent,
+} from './types/events.js';
+import type { Run, RunInput, Engine } from './types/run.js';
 
 export type StreamOptions = {
   signal?: AbortSignal;
 };
 
-export type RunStream = AsyncGenerator<StreamEvent, Run | undefined, undefined>;
+/**
+ * Stream Events v2 (R8, R15): the SDK emits a typed discriminated union.
+ *
+ * Yielded order:
+ *   1. `started` — always first; carries runId synchronously.
+ *   2. zero or more `delta` / `reasoning_node` / `tool_call` events.
+ *   3. exactly one `result` (success) or `error` (failure).
+ *   4. `done` — always last.
+ *
+ * Generic `T` narrows the `result.answer` shape when paired with
+ * `answerFormat`. Defaults to `unknown` so consumers without structured
+ * output get the historical `string` answer.
+ */
+export type RunStream<T = unknown> = AsyncGenerator<
+  StreamEvent<T>,
+  Run<T> | undefined,
+  undefined
+>;
+
+/** Internal helper — yields parsed StreamEvents from an SSE Response body. */
+async function* parseSSEStream<T>(
+  body: ReadableStream<Uint8Array>,
+  initialRunId: string,
+): AsyncGenerator<StreamEvent<T>, string, undefined> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let runId = initialRunId;
+  let pendingEvent: string | null = null;
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        // Comment / heartbeat — `:keep-alive\n\n`
+        if (line.startsWith(':')) continue;
+
+        if (line === '') {
+          // Blank line = end of one SSE record. Reset event tag.
+          pendingEvent = null;
+          continue;
+        }
+
+        if (line.startsWith('event:')) {
+          pendingEvent = line.slice(6).trim();
+          continue;
+        }
+
+        if (!line.startsWith('data:')) continue;
+        const dataContent = line.slice(5).trim();
+
+        if (dataContent === '[DONE]') {
+          yield { type: 'done', runId } as StreamEvent<T>;
+          pendingEvent = null;
+          continue;
+        }
+
+        let payload: any;
+        try {
+          payload = JSON.parse(dataContent);
+        } catch {
+          // Malformed JSON — drop frame.
+          continue;
+        }
+
+        switch (pendingEvent) {
+          case 'started':
+          case 'meta': {
+            // Both shapes carry the runId. We always emit `started` once.
+            const id = payload.run_id ?? payload.runId;
+            if (typeof id === 'string' && id.length > 0) {
+              if (runId !== id) {
+                runId = id;
+                yield { type: 'started', runId } as StartedEvent as StreamEvent<T>;
+              } else if (pendingEvent === 'started') {
+                yield { type: 'started', runId } as StartedEvent as StreamEvent<T>;
+              }
+            }
+            break;
+          }
+
+          case 'reasoning_node': {
+            const node = payload.node ?? payload;
+            yield {
+              type: 'reasoning_node',
+              runId,
+              node,
+            } as ReasoningNodeEvent as StreamEvent<T>;
+            break;
+          }
+
+          case 'tool_call': {
+            const call = payload.call ?? payload;
+            yield {
+              type: 'tool_call',
+              runId,
+              call,
+            } as ToolCallEvent as StreamEvent<T>;
+            break;
+          }
+
+          case 'result': {
+            const result = payload.result ?? payload;
+            yield {
+              type: 'result',
+              runId,
+              result,
+              ...(payload.usage ? { usage: payload.usage } : {}),
+            } as ResultEvent<T> as StreamEvent<T>;
+            break;
+          }
+
+          case 'error': {
+            const code: ErrorCode = (payload.code as ErrorCode) ?? 'internal_error';
+            const message = payload.message ?? payload.details ?? payload.error ?? 'Unknown error';
+            yield {
+              type: 'error',
+              runId,
+              code,
+              message,
+              ...(payload.details ? { details: payload.details } : {}),
+            } as ErrorEvent as StreamEvent<T>;
+            break;
+          }
+
+          default: {
+            // Untagged data frames are OpenAI-compat delta chunks.
+            const content = payload.choices?.[0]?.delta?.content;
+            if (typeof content === 'string' && content.length > 0) {
+              yield { type: 'delta', runId, content } as StreamEvent<T>;
+            }
+            break;
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return runId;
+}
 
 /**
  * Create a streaming run that yields events as they arrive.
  *
- * The API uses OpenAI-compatible SSE format:
- * - event: meta → { run_id }
- * - data: { choices: [{ delta: { content } }] }
- * - event: error → { error, details }
- * - data: [DONE]
+ * Stream Events v2 (R8, R15): yields a typed discriminated union including
+ * `started`, `reasoning_node`, `tool_call`, and `result` in addition to
+ * the legacy `delta` / `error` / `done` events.
  *
  * @internal Used by Subconscious.stream()
  */
-export async function* createStream(
+export async function* createStream<T = unknown>(
   baseUrl: string,
   apiKey: string,
   params: {
@@ -27,7 +180,7 @@ export async function* createStream(
     input: RunInput;
   },
   options: StreamOptions = {},
-): RunStream {
+): RunStream<T> {
   const response = await requestStream(`${baseUrl}/runs/stream`, {
     method: 'POST',
     headers: {
@@ -41,83 +194,70 @@ export async function* createStream(
     signal: options.signal,
   });
 
-  // Extract run ID from headers if available
-  let runId = response.headers.get('x-run-id') || '';
+  const headerRunId = response.headers.get('x-run-id') ?? '';
 
-  const reader = response.body?.getReader();
-  if (!reader) {
+  if (!response.body) {
     throw new Error('Response body is not readable');
   }
 
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let isError = false;
-
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith(':')) continue;
-
-        // Handle event type markers
-        if (trimmed.startsWith('event:')) {
-          const eventType = trimmed.slice(6).trim();
-          isError = eventType === 'error';
-          continue;
-        }
-
-        // Handle data lines
-        if (trimmed.startsWith('data:')) {
-          const dataContent = trimmed.slice(5).trim();
-
-          // Stream end
-          if (dataContent === '[DONE]') {
-            yield { type: 'done', runId };
-            continue;
-          }
-
-          try {
-            const payload = JSON.parse(dataContent);
-
-            // Meta event with run_id
-            if (payload.run_id) {
-              runId = payload.run_id;
-              continue;
-            }
-
-            // Error event
-            if (isError || payload.error) {
-              yield {
-                type: 'error',
-                runId,
-                message: payload.details || payload.error || 'Unknown error',
-                code: payload.code,
-              };
-              isError = false;
-              continue;
-            }
-
-            // OpenAI-compatible chunk with text delta
-            const content = payload.choices?.[0]?.delta?.content;
-            if (typeof content === 'string' && content.length > 0) {
-              yield { type: 'delta', runId, content };
-            }
-          } catch {
-            // Skip malformed JSON
-          }
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
+  // R8: emit `started` synchronously the moment we have a runId, even
+  // before the first server frame, so consumers can register cancellation
+  // before any deltas. The parser will not double-emit if the server's
+  // `started` frame carries the same id.
+  let synthesizedStarted = false;
+  if (headerRunId) {
+    yield { type: 'started', runId: headerRunId } as StartedEvent as StreamEvent<T>;
+    synthesizedStarted = true;
   }
 
-  return runId ? { runId, status: 'succeeded' } : undefined;
+  const finalRunId = yield* (async function* () {
+    const inner = parseSSEStream<T>(response.body!, headerRunId);
+    let firstStartedSkipped = !synthesizedStarted;
+    while (true) {
+      const next = await inner.next();
+      if (next.done) return next.value;
+      // Skip the parser's first `started` if we already synthesized one
+      // for the same id.
+      if (
+        !firstStartedSkipped &&
+        next.value.type === 'started' &&
+        next.value.runId === headerRunId
+      ) {
+        firstStartedSkipped = true;
+        continue;
+      }
+      firstStartedSkipped = true;
+      yield next.value;
+    }
+  })();
+
+  return finalRunId ? ({ runId: finalRunId, status: 'succeeded' } as Run<T>) : undefined;
+}
+
+/**
+ * Re-attach to an in-flight (or already finished) run and stream its
+ * events. Same wire format as `createStream`. (R16.)
+ *
+ * @internal Used by Subconscious.observe()
+ */
+export async function* createObserveStream<T = unknown>(
+  baseUrl: string,
+  apiKey: string,
+  runId: string,
+  options: StreamOptions = {},
+): RunStream<T> {
+  const response = await requestStream(`${baseUrl}/runs/${runId}/stream`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    signal: options.signal,
+  });
+
+  if (!response.body) {
+    throw new Error('Response body is not readable');
+  }
+
+  const finalRunId = yield* parseSSEStream<T>(response.body, runId);
+  return finalRunId ? ({ runId: finalRunId, status: 'succeeded' } as Run<T>) : undefined;
 }

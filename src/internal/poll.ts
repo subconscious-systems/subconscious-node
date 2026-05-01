@@ -9,11 +9,11 @@ export type PollOptions = {
   signal?: AbortSignal;
 };
 
-export async function pollUntilComplete(
+export async function pollUntilComplete<T = unknown>(
   url: string,
   headers: Record<string, string>,
   options: PollOptions = {},
-): Promise<Run> {
+): Promise<Run<T>> {
   const { intervalMs = 1000, maxAttempts, signal } = options;
 
   let attempts = 0;
@@ -23,7 +23,7 @@ export async function pollUntilComplete(
       throw new Error('Polling aborted');
     }
 
-    const run = await request<Run>(url, { headers, signal });
+    const run = await request<Run<T>>(url, { headers, signal });
 
     if (run.status && TERMINAL_STATUSES.includes(run.status)) {
       return run;

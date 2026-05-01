@@ -1,2 +1,10 @@
-// Re-export tool types for direct use
-export type { PlatformTool, FunctionTool, MCPTool, Tool } from './types/tool.js';
+// Re-export tool types and builders for direct use.
+export type {
+  PlatformTool,
+  FunctionTool,
+  MCPTool,
+  MCPAuth,
+  ResourceTool,
+  Tool,
+} from './types/tool.js';
+export { tools } from './builders.js';

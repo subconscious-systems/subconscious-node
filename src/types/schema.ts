@@ -70,7 +70,50 @@ export type OutputSchema = {
 };
 
 /**
+ * Detect whether `value` looks like a Zod schema (has `_def.typeName` or
+ * a `.shape` getter). Zod isn't a runtime dependency so we duck-type. (R13.)
+ */
+function isZodSchema(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as { _def?: { typeName?: string }; shape?: unknown };
+  if (v._def?.typeName) return true;
+  if (typeof v.shape === 'function' || typeof v.shape === 'object') return true;
+  return false;
+}
+
+/**
+ * Detect whether `value` is already a JSON Schema OutputSchema.
+ */
+function isOutputSchema(value: unknown): value is OutputSchema {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as { type?: unknown; properties?: unknown };
+  return v.type === 'object' && typeof v.properties === 'object' && v.properties !== null;
+}
+
+/**
+ * Coerce a user-provided answer/reasoning format into the canonical
+ * `OutputSchema`. Accepts either a Zod schema or an already-built JSON
+ * Schema. (R13.)
+ *
+ * Earlier versions forced consumers to call `zodToJsonSchema(schema, 'X')`
+ * themselves, which (a) leaked the title parameter into business code and
+ * (b) failed silently if forgotten. Now both shapes work.
+ *
+ * @internal Used by `Subconscious.run()` / `runAndWait()` / `stream()`.
+ */
+export function coerceAnswerFormat(input: unknown, defaultTitle: string): OutputSchema {
+  if (isOutputSchema(input)) return input;
+  if (isZodSchema(input)) return zodToJsonSchema(input, defaultTitle);
+  // Last-ditch: assume it is already JSON Schema-shaped.
+  return input as OutputSchema;
+}
+
+/**
  * Convert a Zod schema to the JSON Schema format expected by Subconscious.
+ *
+ * Most users no longer need to call this directly — `client.run()` and
+ * friends accept Zod schemas in `answerFormat` and call this internally.
+ * (R13.)
  *
  * @param schema - A Zod object schema (z.object(...))
  * @param title - The title for the schema (required)
@@ -79,7 +122,6 @@ export type OutputSchema = {
  * @example
  * ```ts
  * import { z } from 'zod';
- * import { zodToJsonSchema } from 'subconscious';
  *
  * const schema = z.object({
  *   summary: z.string().describe('A brief summary'),
@@ -87,15 +129,10 @@ export type OutputSchema = {
  *   tags: z.array(z.string()),
  * });
  *
- * const answerFormat = zodToJsonSchema(schema, 'AnalysisResult');
- *
- * const run = await client.run({
- *   engine: 'tim-large',
- *   input: {
- *     instructions: 'Analyze this article...',
- *     tools: [],
- *     answerFormat,
- *   },
+ * // Pass schema directly — the SDK handles conversion (R13):
+ * const run = await client.runAndWait<{ summary: string; score: number; tags: string[] }>({
+ *   engine: 'tim-claude',
+ *   input: { instructions: 'Analyze this article…', answerFormat: schema },
  * });
  * ```
  */

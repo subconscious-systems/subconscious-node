@@ -6,7 +6,8 @@ export type ErrorCode =
   | 'rate_limited'
   | 'internal_error'
   | 'service_unavailable'
-  | 'timeout';
+  | 'timeout'
+  | 'cancelled';
 
 export type APIErrorResponse = {
   error: {

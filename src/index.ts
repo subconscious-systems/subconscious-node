@@ -1,5 +1,12 @@
 // Main client
-export { Subconscious, type SubconsciousOptions } from './client.js';
+export {
+  Subconscious,
+  type SubconsciousOptions,
+  type GenericRunParams,
+} from './client.js';
+
+// Tool builders (R11) — recommended way to construct tools.
+export { tools } from './builders.js';
 
 // Types - Run
 export type {
@@ -7,9 +14,9 @@ export type {
   RunStatus,
   RunResult,
   RunInput,
-  RunOptions,
   RunParams,
   ReasoningNode,
+  ToolUse,
   Engine,
   Usage,
   ModelUsage,
@@ -17,10 +24,17 @@ export type {
 } from './types/run.js';
 
 // Types - Tools
-export type { Tool, PlatformTool, FunctionTool, MCPTool } from './types/tool.js';
+export type {
+  Tool,
+  PlatformTool,
+  FunctionTool,
+  MCPTool,
+  MCPAuth,
+  ResourceTool,
+} from './types/tool.js';
 
 // Schema types and utilities
-export { zodToJsonSchema } from './types/schema.js';
+export { zodToJsonSchema, coerceAnswerFormat } from './types/schema.js';
 export type {
   OutputSchema,
   JSONSchemaProperty,
@@ -33,8 +47,17 @@ export type {
   JSONSchemaAnyOf,
 } from './types/schema.js';
 
-// Types - Stream Events
-export type { StreamEvent, DeltaEvent, DoneEvent, ErrorEvent } from './types/events.js';
+// Types - Stream Events (Stream Events v2)
+export type {
+  StreamEvent,
+  StartedEvent,
+  DeltaEvent,
+  ReasoningNodeEvent,
+  ToolCallEvent,
+  ResultEvent,
+  DoneEvent,
+  ErrorEvent,
+} from './types/events.js';
 
 // Types - Errors
 export {
@@ -49,3 +72,6 @@ export {
 
 // Stream types
 export type { RunStream, StreamOptions } from './stream.js';
+
+// Polling type
+export type { PollOptions } from './internal/poll.js';
