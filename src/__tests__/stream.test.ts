@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Subconscious } from '../client.js';
 import type { StreamEvent } from '../types/events.js';
+import type { Run } from '../types/run.js';
 
 /**
  * Build a fake `fetch` returning a chunked SSE stream of `frames`. Each
@@ -27,6 +28,18 @@ async function collect<T>(stream: AsyncGenerator<T>): Promise<T[]> {
   const out: T[] = [];
   for await (const ev of stream) out.push(ev);
   return out;
+}
+
+async function collectWithReturn<T, R>(stream: AsyncGenerator<T, R>): Promise<{
+  events: T[];
+  returned: R;
+}> {
+  const events: T[] = [];
+  while (true) {
+    const next = await stream.next();
+    if (next.done) return { events, returned: next.value };
+    events.push(next.value);
+  }
 }
 
 describe('client.stream — Stream Events v2 (R8, R15)', () => {
@@ -174,6 +187,51 @@ describe('client.stream — Stream Events v2 (R8, R15)', () => {
     expect(err.code).toBe('rate_limited');
     expect(err.message).toBe('slow down');
     expect(err.details).toEqual({ retryAfterMs: 1000 });
+  });
+
+  it('returns a failed Run when the stream terminates after an error event', async () => {
+    const fetchMock = mockFetchSSE(
+      [
+        'event: started\ndata: {"runId":"r_failed"}\n\n',
+        'event: error\ndata: {"code":"rate_limited","message":"slow down"}\n\n',
+        'data: [DONE]\n\n',
+      ],
+      'r_failed',
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new Subconscious({ apiKey: 'k' });
+    const { returned } = await collectWithReturn(
+      client.stream({ engine: 'tim-claude', input: { instructions: 'hi' } }),
+    );
+    vi.unstubAllGlobals();
+
+    expect(returned).toMatchObject({ runId: 'r_failed', status: 'failed' } satisfies Partial<Run>);
+  });
+
+  it('returns a succeeded Run with result and usage after a result event', async () => {
+    const fetchMock = mockFetchSSE(
+      [
+        'event: started\ndata: {"runId":"r_ok"}\n\n',
+        'event: result\ndata: {"result":{"answer":"42","reasoning":null},"usage":{"inputTokens":1,"outputTokens":2}}\n\n',
+        'data: [DONE]\n\n',
+      ],
+      'r_ok',
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new Subconscious({ apiKey: 'k' });
+    const { returned } = await collectWithReturn(
+      client.stream<string>({ engine: 'tim-claude', input: { instructions: 'hi' } }),
+    );
+    vi.unstubAllGlobals();
+
+    expect(returned).toEqual({
+      runId: 'r_ok',
+      status: 'succeeded',
+      result: { answer: '42', reasoning: null },
+      usage: { inputTokens: 1, outputTokens: 2 },
+    });
   });
 });
 

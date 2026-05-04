@@ -8,11 +8,19 @@ import type {
   StreamEvent,
   ToolCallEvent,
 } from './types/events.js';
-import type { Run, RunInput, Engine } from './types/run.js';
+import type { Engine, Run, RunInput, RunStatus } from './types/run.js';
 
 export type StreamOptions = {
   signal?: AbortSignal;
 };
+
+type ParsedStreamState<T> = Pick<Run<T>, 'runId' | 'status' | 'result' | 'usage'>;
+
+function statusFromErrorCode(code: ErrorCode): RunStatus {
+  if (code === 'canceled') return 'canceled';
+  if (code === 'timeout') return 'timed_out';
+  return 'failed';
+}
 
 /**
  * Stream Events v2 (R8, R15): the SDK emits a typed discriminated union.
@@ -37,11 +45,12 @@ export type RunStream<T = unknown> = AsyncGenerator<
 async function* parseSSEStream<T>(
   body: ReadableStream<Uint8Array>,
   initialRunId: string,
-): AsyncGenerator<StreamEvent<T>, string, undefined> {
+): AsyncGenerator<StreamEvent<T>, ParsedStreamState<T>, undefined> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let runId = initialRunId;
+  const state: ParsedStreamState<T> = { runId };
   let pendingEvent: string | null = null;
 
   try {
@@ -96,6 +105,7 @@ async function* parseSSEStream<T>(
             if (typeof id === 'string' && id.length > 0) {
               if (runId !== id) {
                 runId = id;
+                state.runId = id;
                 yield { type: 'started', runId } as StartedEvent as StreamEvent<T>;
               } else if (pendingEvent === 'started') {
                 yield { type: 'started', runId } as StartedEvent as StreamEvent<T>;
@@ -126,18 +136,23 @@ async function* parseSSEStream<T>(
 
           case 'result': {
             const result = payload.result ?? payload;
-            yield {
+            const event = {
               type: 'result',
               runId,
               result,
               ...(payload.usage ? { usage: payload.usage } : {}),
-            } as ResultEvent<T> as StreamEvent<T>;
+            } as ResultEvent<T>;
+            state.status = 'succeeded';
+            state.result = event.result;
+            if (event.usage) state.usage = event.usage;
+            yield event as StreamEvent<T>;
             break;
           }
 
           case 'error': {
             const code: ErrorCode = (payload.code as ErrorCode) ?? 'internal_error';
             const message = payload.message ?? payload.details ?? payload.error ?? 'Unknown error';
+            state.status = statusFromErrorCode(code);
             yield {
               type: 'error',
               runId,
@@ -163,7 +178,8 @@ async function* parseSSEStream<T>(
     reader.releaseLock();
   }
 
-  return runId;
+  state.runId = runId;
+  return state;
 }
 
 /**
@@ -213,7 +229,7 @@ export async function* createStream<T = unknown>(
     synthesizedStarted = true;
   }
 
-  const finalRunId = yield* (async function* () {
+  const finalState = yield* (async function* () {
     const inner = parseSSEStream<T>(response.body!, headerRunId);
     let firstStartedSkipped = !synthesizedStarted;
     while (true) {
@@ -234,7 +250,7 @@ export async function* createStream<T = unknown>(
     }
   })();
 
-  return finalRunId ? ({ runId: finalRunId, status: 'succeeded' } as Run<T>) : undefined;
+  return finalState.runId ? (finalState as Run<T>) : undefined;
 }
 
 /**
@@ -261,6 +277,6 @@ export async function* createObserveStream<T = unknown>(
     throw new Error('Response body is not readable');
   }
 
-  const finalRunId = yield* parseSSEStream<T>(response.body, runId);
-  return finalRunId ? ({ runId: finalRunId, status: 'succeeded' } as Run<T>) : undefined;
+  const finalState = yield* parseSSEStream<T>(response.body, runId);
+  return finalState.runId ? (finalState as Run<T>) : undefined;
 }
