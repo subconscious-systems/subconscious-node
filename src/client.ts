@@ -80,7 +80,7 @@ export class Subconscious {
 
   constructor(opts: SubconsciousOptions = {}) {
     this.apiKey = resolveApiKey(opts.apiKey);
-    this.baseUrl = opts.baseUrl ?? 'https://api.subconscious.dev/v1';
+    this.baseUrl = opts.baseUrl ?? 'https://api-legacy.subconscious.dev/v1';
   }
 
   async run(params: RunParams): Promise<Run> {

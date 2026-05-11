@@ -431,7 +431,7 @@ The main client class.
 | Option    | Type     | Required | Default                           |
 | --------- | -------- | -------- | --------------------------------- |
 | `apiKey`  | `string` | No\*     | —                                 |
-| `baseUrl` | `string` | No       | `https://api.subconscious.dev/v1` |
+| `baseUrl` | `string` | No       | `https://api-legacy.subconscious.dev/v1` |
 
 \* If not passed, resolved from `SUBCONSCIOUS_API_KEY` env var or `~/.subcon/config.json`.
 
